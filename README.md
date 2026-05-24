@@ -12,7 +12,7 @@ This folder is ready for GitHub plus Cloudflare Pages.
 
 ## SMS Number
 
-The current site uses the public campaign number `+1 (929) 297-9785`.
+The current site uses the public campaign number `+1 (917) 590-8002`.
 If your Telnyx campaign uses a different public number later, update it in the HTML files before submitting the campaign.
 
 ## Telnyx Disclosure Note
