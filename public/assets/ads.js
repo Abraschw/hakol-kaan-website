@@ -43,6 +43,42 @@
     return local.toISOString().slice(0, 10);
   }
 
+  function selectedDateObject() {
+    var value = dateInput.value || "";
+    var parts = value.split("-").map(Number);
+    if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+      return null;
+    }
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function selectedDateIsSaturday() {
+    var date = selectedDateObject();
+    return Boolean(date && date.getDay() === 6);
+  }
+
+  function selectedDateIsFriday() {
+    var date = selectedDateObject();
+    return Boolean(date && date.getDay() === 5);
+  }
+
+  function slotBlockedByDate(slot) {
+    if (!slot) {
+      return false;
+    }
+    return selectedDateIsSaturday() || (selectedDateIsFriday() && Number(slot.hour) > 12);
+  }
+
+  function dateRuleMessage(slot) {
+    if (selectedDateIsSaturday()) {
+      return "Ads are not available on Saturday. Please choose a different date.";
+    }
+    if (selectedDateIsFriday() && (!slot || Number(slot.hour) > 12)) {
+      return "Friday ads are available only through 12 PM.";
+    }
+    return "";
+  }
+
   function setMessage(message, type) {
     statusBox.textContent = message || "";
     statusBox.className = "form-status" + (type ? " is-" + type : "");
@@ -91,7 +127,11 @@
     bidField.classList.add("hidden");
     bidAmount.required = false;
     if (!slot) {
-      slotSummary.textContent = "Select a time to see availability and payment details.";
+      slotSummary.textContent = dateRuleMessage(null) || "Select a time to see availability and payment details.";
+      return;
+    }
+    if (slotBlockedByDate(slot)) {
+      slotSummary.textContent = dateRuleMessage(slot);
       return;
     }
     if (slot.kind === "fixed") {
@@ -119,8 +159,11 @@
           option.value = slot.hour;
           var wrongDate = slot.slot_date !== requestedDate;
           var unavailable = slot.kind === "fixed" && Number(slot.remaining_spots) < 1;
-          option.disabled = wrongDate || unavailable;
-          if (wrongDate) {
+          var blockedByDate = slotBlockedByDate(slot);
+          option.disabled = wrongDate || unavailable || blockedByDate;
+          if (blockedByDate) {
+            option.textContent = slot.label + " - unavailable on this date";
+          } else if (wrongDate) {
             option.textContent = slot.label + " - closed for this date";
           } else if (slot.kind === "fixed") {
             option.textContent = slot.label + " - " + slot.boxes + " spot layout - " + money(slot.price) + " - " + slot.remaining_spots + " left";
@@ -257,6 +300,10 @@
     var stripeSession = sessionStorage.getItem(stripeSessionKey);
     if (!stripeSession) {
       setMessage("Save your card securely with Stripe before submitting the ad.", "error");
+      return;
+    }
+    if (slotBlockedByDate(selectedSlot())) {
+      setMessage(dateRuleMessage(selectedSlot()), "error");
       return;
     }
     var data = new FormData(form);
