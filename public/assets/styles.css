@@ -82,13 +82,32 @@ a {
 }
 
 .nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.12rem 0.68rem;
   color: var(--ink);
+  border-radius: 999px;
   font-weight: 700;
   text-decoration: none;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .nav a:hover {
   color: var(--green);
+  background: rgba(15, 92, 69, 0.07);
+}
+
+.nav a[aria-current="page"] {
+  color: var(--green);
+  background: rgba(15, 92, 69, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(15, 92, 69, 0.14),
+    0 10px 24px rgba(15, 92, 69, 0.08);
+}
+
+.nav a[aria-current="page"]:hover {
+  background: rgba(15, 92, 69, 0.14);
 }
 
 .page {
@@ -373,10 +392,7 @@ h3 {
 }
 
 .nav-feature {
-  padding: 0.08rem 0.7rem;
-  color: #fff !important;
-  background: var(--green);
-  border-radius: 999px;
+  color: var(--ink);
 }
 
 .ads-hero {
