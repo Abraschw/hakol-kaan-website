@@ -15,19 +15,37 @@
   var stripeButton = document.getElementById("stripe-button");
   var submitButton = document.getElementById("submit-ad-button");
   var retryServerButton = document.getElementById("retry-server-button");
-  var trackingForm = document.getElementById("track-form");
-  var trackingId = document.getElementById("tracking-id");
-  var trackingToken = document.getElementById("tracking-token");
-  var trackingResult = document.getElementById("tracking-result");
-  var trackingCopy = document.getElementById("tracking-copy");
-  var raiseForm = document.getElementById("raise-form");
-  var raiseAmount = document.getElementById("raise-amount");
+  var loginForm = document.getElementById("ad-login-form");
+  var signupForm = document.getElementById("ad-signup-form");
+  var otpForm = document.getElementById("ad-otp-form");
+  var forgotPasswordForm = document.getElementById("forgot-password-form");
+  var resetPasswordForm = document.getElementById("reset-password-form");
+  var showLoginButton = document.getElementById("show-login-button");
+  var showSignupButton = document.getElementById("show-signup-button");
+  var forgotPasswordButton = document.getElementById("forgot-password-button");
+  var backToLoginButton = document.getElementById("back-to-login-button");
+  var authEmailInput = document.getElementById("auth-email");
+  var authCodeInput = document.getElementById("auth-code");
+  var forgotEmailInput = document.getElementById("forgot-email");
+  var authStatus = document.getElementById("auth-status");
+  var accountPanel = document.getElementById("account-panel");
+  var accountEmail = document.getElementById("account-email");
+  var signOutButton = document.getElementById("sign-out-button");
+  var signedOutNote = document.getElementById("signed-out-note");
+  var bookingContent = document.getElementById("booking-content");
+  var dashboardStatus = document.getElementById("dashboard-status");
+  var dashboardList = document.getElementById("dashboard-list");
+  var refreshDashboardButton = document.getElementById("refresh-dashboard-button");
   var slots = [];
   var stripeSessionKey = "hakol_kaan_ads_stripe_session";
   var draftKey = "hakol_kaan_ads_draft";
-  var trackKey = "hakol_kaan_ads_tracking";
+  var authKey = "hakol_kaan_ads_auth";
   var serverAvailable = false;
   var unavailableMessage = "Advertising requests are temporarily unavailable. Please try again later.";
+  var authSession = loadAuthSession();
+  var pendingAuthEmail = "";
+  var pendingAuthPurpose = "signup";
+  var pendingResetEmail = "";
 
   if (!form || !apiBase) {
     return;
@@ -84,9 +102,99 @@
     statusBox.className = "form-status" + (type ? " is-" + type : "");
   }
 
+  function setAuthMessage(message, type) {
+    authStatus.textContent = message || "";
+    authStatus.className = "form-status" + (type ? " is-" + type : "");
+  }
+
+  function setDashboardMessage(message, type) {
+    dashboardStatus.textContent = message || "";
+    dashboardStatus.className = "form-status" + (type ? " is-" + type : "");
+  }
+
+  function loadAuthSession() {
+    try {
+      var session = JSON.parse(localStorage.getItem(authKey) || "{}");
+      if (session && session.email && session.session_token) {
+        return session;
+      }
+    } catch (error) {
+      localStorage.removeItem(authKey);
+    }
+    return null;
+  }
+
+  function saveAuthSession(session) {
+    authSession = session && session.email && session.session_token ? session : null;
+    if (authSession) {
+      localStorage.setItem(authKey, JSON.stringify(authSession));
+    } else {
+      localStorage.removeItem(authKey);
+    }
+    updateAuthUi();
+  }
+
+  function isSignedIn() {
+    return Boolean(authSession && authSession.email && authSession.session_token);
+  }
+
+  function setAuthMode(mode) {
+    var signedIn = isSignedIn();
+    loginForm.classList.toggle("hidden", signedIn || mode !== "login");
+    signupForm.classList.toggle("hidden", signedIn || mode !== "signup");
+    otpForm.classList.toggle("hidden", signedIn || mode !== "verify");
+    forgotPasswordForm.classList.toggle("hidden", signedIn || mode !== "forgot");
+    resetPasswordForm.classList.toggle("hidden", signedIn || mode !== "reset");
+    showLoginButton.classList.toggle("is-active", mode === "login");
+    showSignupButton.classList.toggle("is-active", mode === "signup");
+  }
+
+  function applyAuthProfileToForm() {
+    if (!isSignedIn()) {
+      form.elements.email.readOnly = false;
+      return;
+    }
+    var profile = authSession.profile || {};
+    form.elements.email.value = authSession.email;
+    form.elements.email.readOnly = true;
+    if (profile.full_name && !form.elements.advertiser_name.value) {
+      form.elements.advertiser_name.value = profile.full_name;
+    }
+    if (profile.business_name && !form.elements.business_name.value) {
+      form.elements.business_name.value = profile.business_name;
+    }
+    if (profile.phone && !form.elements.phone.value) {
+      form.elements.phone.value = profile.phone;
+    }
+  }
+
   function updateActionButtons() {
-    stripeButton.disabled = !serverAvailable;
-    submitButton.disabled = !serverAvailable || !sessionStorage.getItem(stripeSessionKey);
+    stripeButton.disabled = !serverAvailable || !isSignedIn();
+    submitButton.disabled = !serverAvailable || !isSignedIn() || !sessionStorage.getItem(stripeSessionKey);
+  }
+
+  function updateAuthUi() {
+    var signedIn = isSignedIn();
+    if (signedIn) {
+      setAuthMode("account");
+    } else {
+      setAuthMode("login");
+    }
+    accountPanel.classList.toggle("hidden", !signedIn);
+    signedOutNote.classList.toggle("hidden", signedIn);
+    bookingContent.classList.toggle("hidden", !signedIn);
+    if (signedIn) {
+      accountEmail.textContent = authSession.email;
+      authEmailInput.value = authSession.email;
+      applyAuthProfileToForm();
+      setAuthMessage("You are signed in. You can place ads and view your dashboard.", "success");
+      loadDashboard();
+    } else {
+      form.elements.email.readOnly = false;
+      setDashboardMessage("Sign in above to see your ad dashboard.", "");
+      dashboardList.innerHTML = "";
+    }
+    updateActionButtons();
   }
 
   function markServerUnavailable() {
@@ -258,9 +366,347 @@
     }
   }
 
+  function statusText(ad) {
+    var statusNames = {
+      pending_approval: "Pending Hakol Kaan approval",
+      active_bid: "Approved and actively bidding",
+      approved_paid: "Approved and paid",
+      paid: "Approved, paid, and scheduled",
+      won: "Winning bid selected",
+      charged: "Winning bid charged and scheduled",
+      sent: "Ad sent",
+      rejected: "Not approved",
+      lost: "Bid did not win",
+      payment_failed: "Payment failed",
+      sold_out: "Approved, but that fixed spot was already filled",
+      reservation_failed: "Approved, but reservation could not be completed",
+      hold_failed: "Approved, but the temporary card check failed"
+    };
+    var message = (statusNames[ad.status] || ad.status || "Status unavailable") + ". Placement: " + ad.slot + ".";
+    if (ad.kind === "bid") {
+      message += " Your bid: " + money(ad.bid_amount) + ". Current highest bid: " + money(ad.highest_bid) + ".";
+      if (ad.rank) {
+        message += " Current position: " + ad.rank + ".";
+      }
+    }
+    return message;
+  }
+
+  function displayDate(value) {
+    if (!value) {
+      return "";
+    }
+    var parts = String(value).split("-").map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+    return String(value);
+  }
+
+  function displayHour(value) {
+    var hour = Number(value);
+    if (!hour) {
+      return "";
+    }
+    var suffix = hour >= 12 ? "PM" : "AM";
+    var normalHour = hour % 12 || 12;
+    return normalHour + " " + suffix + " ET";
+  }
+
+  function addDashboardDetail(container, labelText, valueText) {
+    if (!valueText) {
+      return;
+    }
+    var item = document.createElement("div");
+    item.className = "dashboard-detail";
+    var label = document.createElement("span");
+    label.textContent = labelText;
+    var value = document.createElement("strong");
+    value.textContent = valueText;
+    item.appendChild(label);
+    item.appendChild(value);
+    container.appendChild(item);
+  }
+
+  function renderDashboard(ads) {
+    dashboardList.innerHTML = "";
+    if (!ads || !ads.length) {
+      setDashboardMessage("You do not have any website ad requests yet.", "");
+      return;
+    }
+    setDashboardMessage("Showing " + ads.length + " ad request(s) for " + authSession.email + ".", "success");
+    ads.forEach(function (ad) {
+      var card = document.createElement("article");
+      card.className = "dashboard-card";
+
+      var title = document.createElement("h3");
+      title.textContent = (ad.business_name || "Ad request") + " - " + (ad.ad_id || "");
+      card.appendChild(title);
+
+      var meta = document.createElement("p");
+      meta.className = "dashboard-meta";
+      meta.textContent = (ad.kind === "bid" ? "Bidding ad" : "Fixed-price ad") + " | " + (ad.created_at || "created time unavailable");
+      card.appendChild(meta);
+
+      var status = document.createElement("p");
+      status.textContent = statusText(ad);
+      card.appendChild(status);
+
+      var details = document.createElement("div");
+      details.className = "dashboard-details";
+      addDashboardDetail(details, "Request ID", ad.ad_id || "");
+      addDashboardDetail(details, "Date", displayDate(ad.slot_date));
+      addDashboardDetail(details, "Send time", displayHour(ad.hour));
+      addDashboardDetail(details, "Placement", ad.slot || "");
+      addDashboardDetail(details, "Spots in layout", ad.boxes ? String(ad.boxes) : "");
+      addDashboardDetail(details, "Contact name", ad.advertiser_name || "");
+      addDashboardDetail(details, "Contact email", ad.email || "");
+      addDashboardDetail(details, "Contact phone", ad.phone || "");
+      addDashboardDetail(details, "Creative type", ad.creative_type || "");
+      addDashboardDetail(details, "Fixed price", ad.kind === "fixed" ? money(ad.price) : "");
+      addDashboardDetail(details, "Your bid", ad.kind === "bid" ? money(ad.bid_amount) : "");
+      addDashboardDetail(details, "Highest bid", ad.kind === "bid" ? money(ad.highest_bid) : "");
+      addDashboardDetail(details, "Bid position", ad.kind === "bid" && ad.rank ? String(ad.rank) : "");
+      card.appendChild(details);
+
+      if (ad.preview_url) {
+        var image = document.createElement("img");
+        image.className = "dashboard-preview";
+        image.src = ad.preview_url;
+        image.alt = "Ad preview for " + (ad.business_name || ad.ad_id || "request");
+        card.appendChild(image);
+      }
+
+      if (ad.can_increase_bid) {
+        var formEl = document.createElement("form");
+        formEl.className = "raise-form dashboard-raise-form";
+        var label = document.createElement("label");
+        label.className = "field";
+        label.textContent = "Increase your bid to";
+        var input = document.createElement("input");
+        input.type = "number";
+        input.min = String(Number(ad.bid_amount || 0) + 0.01);
+        input.step = "0.01";
+        input.required = true;
+        label.appendChild(input);
+        var button = document.createElement("button");
+        button.className = "button";
+        button.type = "submit";
+        button.textContent = "Increase bid";
+        formEl.appendChild(label);
+        formEl.appendChild(button);
+        formEl.addEventListener("submit", function (event) {
+          event.preventDefault();
+          requestJson("/ads/api/increase-bid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_token: authSession.session_token,
+              ad_id: ad.ad_id,
+              amount: input.value
+            })
+          }).then(function () {
+            setDashboardMessage("Bid updated.", "success");
+            loadDashboard();
+          }).catch(function (error) {
+            setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+          });
+        });
+        card.appendChild(formEl);
+      }
+
+      dashboardList.appendChild(card);
+    });
+  }
+
+  function loadDashboard() {
+    if (!isSignedIn()) {
+      setDashboardMessage("Sign in above to see your ad dashboard.", "");
+      dashboardList.innerHTML = "";
+      return Promise.resolve();
+    }
+    setDashboardMessage("Loading your dashboard...", "");
+    return requestJson("/ads/api/dashboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_token: authSession.session_token })
+    }).then(function (payload) {
+      if (payload.profile && authSession) {
+        authSession.profile = payload.profile;
+        localStorage.setItem(authKey, JSON.stringify(authSession));
+        applyAuthProfileToForm();
+      }
+      renderDashboard(payload.ads || []);
+    }).catch(function (error) {
+      if (/sign in/i.test(error.message)) {
+        saveAuthSession(null);
+      }
+      setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  }
+
+  loginForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var email = (authEmailInput.value || "").trim();
+    var password = loginForm.elements.password.value || "";
+    if (!email || email.indexOf("@") < 0) {
+      setAuthMessage("Enter a valid email address.", "error");
+      return;
+    }
+    if (!password) {
+      setAuthMessage("Enter your password.", "error");
+      return;
+    }
+    setAuthMessage("Logging in...", "");
+    requestJson("/ads/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password, website: loginForm.elements.website.value })
+    }).then(function (payload) {
+      if (payload.code_required) {
+        pendingAuthEmail = payload.email || email;
+        pendingAuthPurpose = "signup";
+        setAuthMode("verify");
+        setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here to verify your email.", "success");
+        authCodeInput.focus();
+        return;
+      }
+      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      loginForm.elements.password.value = "";
+      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (error) {
+      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  });
+
+  signupForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var password = signupForm.elements.password.value || "";
+    var confirm = signupForm.elements.password_confirm.value || "";
+    if (password !== confirm) {
+      setAuthMessage("The passwords do not match.", "error");
+      return;
+    }
+    setAuthMessage("Creating your account...", "");
+    requestJson("/ads/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: signupForm.elements.full_name.value,
+        business_name: signupForm.elements.business_name.value,
+        email: signupForm.elements.email.value,
+        phone: signupForm.elements.phone.value,
+        password: password,
+        website: signupForm.elements.website.value
+      })
+    }).then(function (payload) {
+      pendingAuthEmail = payload.email || signupForm.elements.email.value;
+      pendingAuthPurpose = "signup";
+      setAuthMode("verify");
+      setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here to finish signing up.", "success");
+      authCodeInput.focus();
+    }).catch(function (error) {
+      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  });
+
+  otpForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    requestJson("/ads/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pendingAuthEmail || authEmailInput.value, code: authCodeInput.value, purpose: pendingAuthPurpose })
+    }).then(function (payload) {
+      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      authCodeInput.value = "";
+      signupForm.reset();
+      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (error) {
+      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  });
+
+  forgotPasswordForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    pendingResetEmail = (forgotEmailInput.value || "").trim();
+    setAuthMessage("Sending a reset code...", "");
+    requestJson("/ads/api/auth/forgot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pendingResetEmail })
+    }).then(function (payload) {
+      pendingResetEmail = payload.email || pendingResetEmail;
+      setAuthMode("reset");
+      setAuthMessage((payload.message || "If that email has an account, a reset code was sent.") + " Enter the code and your new password here.", "success");
+      document.getElementById("reset-code").focus();
+    }).catch(function (error) {
+      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  });
+
+  resetPasswordForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var password = resetPasswordForm.elements.password.value || "";
+    var confirm = resetPasswordForm.elements.password_confirm.value || "";
+    if (password !== confirm) {
+      setAuthMessage("The passwords do not match.", "error");
+      return;
+    }
+    setAuthMessage("Resetting your password...", "");
+    requestJson("/ads/api/auth/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pendingResetEmail, code: resetPasswordForm.elements.code.value, password: password })
+    }).then(function (payload) {
+      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      resetPasswordForm.reset();
+      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (error) {
+      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+    });
+  });
+
+  showLoginButton.addEventListener("click", function () {
+    setAuthMode("login");
+    setAuthMessage("", "");
+  });
+
+  showSignupButton.addEventListener("click", function () {
+    setAuthMode("signup");
+    setAuthMessage("", "");
+  });
+
+  forgotPasswordButton.addEventListener("click", function () {
+    forgotEmailInput.value = authEmailInput.value || "";
+    setAuthMode("forgot");
+    setAuthMessage("Enter your account email and we will send a reset code. Check your Inbox or Spam folder.", "");
+  });
+
+  backToLoginButton.addEventListener("click", function () {
+    setAuthMode("login");
+    setAuthMessage("", "");
+  });
+
+  signOutButton.addEventListener("click", function () {
+    saveAuthSession(null);
+    sessionStorage.removeItem(stripeSessionKey);
+    updateActionButtons();
+    setAuthMessage("You are signed out.", "");
+  });
+
   stripeButton.addEventListener("click", function () {
     if (!serverAvailable) {
       markServerUnavailable();
+      return;
+    }
+    if (!isSignedIn()) {
+      setMessage("Sign in with your email before saving a card.", "error");
+      document.getElementById("ad-account").scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     if (!form.elements.advertiser_name.value || !form.elements.email.value || !form.elements.phone.value) {
@@ -274,6 +720,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        session_token: authSession.session_token,
         advertiser_name: form.elements.advertiser_name.value,
         email: form.elements.email.value,
         phone: form.elements.phone.value,
@@ -297,6 +744,10 @@
       markServerUnavailable();
       return;
     }
+    if (!isSignedIn()) {
+      setMessage("Sign in with your email before submitting an ad.", "error");
+      return;
+    }
     var stripeSession = sessionStorage.getItem(stripeSessionKey);
     if (!stripeSession) {
       setMessage("Save your card securely with Stripe before submitting the ad.", "error");
@@ -308,19 +759,16 @@
     }
     var data = new FormData(form);
     data.append("stripe_session_id", stripeSession);
+    data.append("session_token", authSession.session_token);
     submitButton.disabled = true;
     setMessage("Submitting your ad for Hakol Kaan review...", "");
     requestJson("/ads/api/submit", { method: "POST", body: data })
       .then(function (payload) {
-        var stored = { ad_id: payload.ad_id, manage_token: payload.manage_token };
-        localStorage.setItem(trackKey, JSON.stringify(stored));
-        trackingId.value = stored.ad_id;
-        trackingToken.value = stored.manage_token;
         sessionStorage.removeItem(stripeSessionKey);
         sessionStorage.removeItem(draftKey);
-        setMessage("Your ad request was sent for approval. Request ID: " + stored.ad_id + ". Your private tracking key is shown in the Request tracking section below; keep it to check status or increase a bid.", "success");
-        trackingResult.classList.add("hidden");
-        document.getElementById("track-bid").scrollIntoView({ behavior: "smooth", block: "start" });
+        setMessage("Your ad request was sent for approval. Request ID: " + payload.ad_id + ". You can see it in your dashboard below.", "success");
+        loadDashboard();
+        document.getElementById("ad-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
       })
       .catch(function (error) {
         if (error.message === unavailableMessage) {
@@ -332,69 +780,7 @@
       });
   });
 
-  function statusText(ad) {
-    var statusNames = {
-      pending_approval: "Pending Hakol Kaan approval",
-      active_bid: "Approved and actively bidding",
-      approved_paid: "Approved and paid",
-      paid: "Approved, paid, and scheduled",
-      won: "Winning bid selected",
-      charged: "Winning bid charged and scheduled",
-      sent: "Ad sent",
-      rejected: "Not approved",
-      lost: "Bid did not win",
-      payment_failed: "Payment failed",
-      sold_out: "Approved, but that fixed spot was already filled",
-      reservation_failed: "Approved, but reservation could not be completed",
-      hold_failed: "Approved, but the temporary card check failed"
-    };
-    var message = (statusNames[ad.status] || ad.status) + ". Placement: " + ad.slot + ".";
-    if (ad.kind === "bid") {
-      message += " Your bid: " + money(ad.bid_amount) + ". Current highest bid: " + money(ad.highest_bid) + ".";
-      if (ad.rank) {
-        message += " Current position: " + ad.rank + ".";
-      }
-    }
-    return message;
-  }
-
-  function showAdStatus(ad) {
-    trackingResult.classList.remove("hidden");
-    trackingCopy.textContent = statusText(ad);
-    raiseForm.classList.toggle("hidden", !ad.can_increase_bid);
-    if (ad.can_increase_bid) {
-      raiseAmount.min = String(Number(ad.bid_amount || 0) + 0.01);
-    }
-  }
-
-  trackingForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-    requestJson("/ads/api/status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ad_id: trackingId.value, manage_token: trackingToken.value })
-    }).then(function (payload) {
-      showAdStatus(payload.ad);
-    }).catch(function (error) {
-      trackingResult.classList.remove("hidden");
-      trackingCopy.textContent = error.message === unavailableMessage ? unavailableMessage : error.message;
-      raiseForm.classList.add("hidden");
-    });
-  });
-
-  raiseForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-    requestJson("/ads/api/increase-bid", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ad_id: trackingId.value, manage_token: trackingToken.value, amount: raiseAmount.value })
-    }).then(function (payload) {
-      showAdStatus(payload.status);
-    }).catch(function (error) {
-      trackingCopy.textContent = error.message === unavailableMessage ? unavailableMessage : error.message;
-    });
-  });
-
+  refreshDashboardButton.addEventListener("click", loadDashboard);
   stripeButton.disabled = true;
   submitButton.disabled = true;
   dateInput.min = today();
@@ -411,12 +797,6 @@
       loadSlots();
     }
     cardSetupReturn();
+    updateAuthUi();
   });
-  try {
-    var tracking = JSON.parse(localStorage.getItem(trackKey) || "{}");
-    trackingId.value = tracking.ad_id || "";
-    trackingToken.value = tracking.manage_token || "";
-  } catch (error) {
-    localStorage.removeItem(trackKey);
-  }
 }());
