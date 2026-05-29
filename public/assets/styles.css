@@ -514,6 +514,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+  align-items: start;
 }
 
 .layout-card {
@@ -528,7 +529,9 @@ h3 {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  padding: 0.4rem;
+  background: #f5f0e2;
+  object-fit: contain;
 }
 
 .layout-card figcaption {
