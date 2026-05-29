@@ -10,8 +10,8 @@
   var slotSummary = document.getElementById("slot-summary");
   var bidField = document.getElementById("bid-field");
   var bidAmount = document.getElementById("bid-amount");
-  var imageField = document.getElementById("creative-image-field");
-  var textField = document.getElementById("creative-text-field");
+  var imageField = document.getElementById("ad-image-field");
+  var textField = document.getElementById("ad-text-field");
   var stripeButton = document.getElementById("stripe-button");
   var submitButton = document.getElementById("submit-ad-button");
   var savedCardStatus = document.getElementById("saved-card-status");
@@ -351,7 +351,7 @@
       });
   }
 
-  function creativeChanged() {
+  function adTypeChanged() {
     var selected = form.querySelector('input[name="creative_type"]:checked');
     var isText = selected && selected.value === "text";
     imageField.classList.toggle("hidden", isText);
@@ -396,15 +396,15 @@
       }
     });
     if (draft.creative_type) {
-      var creative = form.querySelector('input[name="creative_type"][value="' + draft.creative_type + '"]');
-      if (creative) {
-        creative.checked = true;
+      var adChoice = form.querySelector('input[name="creative_type"][value="' + draft.creative_type + '"]');
+      if (adChoice) {
+        adChoice.checked = true;
       }
     }
     if (form.elements.sms_consent) {
       form.elements.sms_consent.checked = Boolean(draft.sms_consent);
     }
-    creativeChanged();
+    adTypeChanged();
     return loadSlots().then(function () {
       if (draft.hour) {
         slotSelect.value = draft.hour;
@@ -554,7 +554,7 @@
       addDashboardDetail(details, "Contact name", ad.advertiser_name || "");
       addDashboardDetail(details, "Contact email", ad.email || "");
       addDashboardDetail(details, "Contact phone", ad.phone || "");
-      addDashboardDetail(details, "Creative type", ad.creative_type || "");
+      addDashboardDetail(details, "Ad type", ad.creative_type || "");
       addDashboardDetail(details, "Fixed price", ad.kind === "fixed" ? money(ad.price) : "");
       addDashboardDetail(details, "Your bid", ad.kind === "bid" ? money(ad.bid_amount) : "");
       addDashboardDetail(details, "Highest bid", ad.kind === "bid" ? money(ad.highest_bid) : "");
@@ -894,9 +894,9 @@
   slotSelect.addEventListener("change", drawSlotSummary);
   dateInput.addEventListener("change", loadSlots);
   form.querySelectorAll('input[name="creative_type"]').forEach(function (input) {
-    input.addEventListener("change", creativeChanged);
+    input.addEventListener("change", adTypeChanged);
   });
-  creativeChanged();
+  adTypeChanged();
   retryServerButton.addEventListener("click", loadSlots);
   restoreDraft().then(function () {
     if (!sessionStorage.getItem(draftKey)) {
