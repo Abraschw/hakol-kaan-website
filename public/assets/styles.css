@@ -525,6 +525,11 @@ h3 {
   border-radius: 1.15rem;
 }
 
+.layout-preview-link {
+  display: block;
+  cursor: zoom-in;
+}
+
 .layout-card img {
   display: block;
   width: 100%;
