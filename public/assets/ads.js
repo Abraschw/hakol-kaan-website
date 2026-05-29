@@ -30,6 +30,7 @@
   var authStatus = document.getElementById("auth-status");
   var accountPanel = document.getElementById("account-panel");
   var accountEmail = document.getElementById("account-email");
+  var heroAuthButton = document.getElementById("hero-auth-button");
   var signOutButton = document.getElementById("sign-out-button");
   var signedOutNote = document.getElementById("signed-out-note");
   var bookingContent = document.getElementById("booking-content");
@@ -183,6 +184,10 @@
     accountPanel.classList.toggle("hidden", !signedIn);
     signedOutNote.classList.toggle("hidden", signedIn);
     bookingContent.classList.toggle("hidden", !signedIn);
+    if (heroAuthButton) {
+      heroAuthButton.textContent = signedIn ? "Place an ad" : "Sign in to advertise";
+      heroAuthButton.href = signedIn ? "#book-ad" : "#ad-account";
+    }
     if (signedIn) {
       accountEmail.textContent = authSession.email;
       authEmailInput.value = authSession.email;
