@@ -14,6 +14,7 @@
   var textField = document.getElementById("creative-text-field");
   var stripeButton = document.getElementById("stripe-button");
   var submitButton = document.getElementById("submit-ad-button");
+  var savedCardStatus = document.getElementById("saved-card-status");
   var retryServerButton = document.getElementById("retry-server-button");
   var loginForm = document.getElementById("ad-login-form");
   var signupForm = document.getElementById("ad-signup-form");
@@ -168,6 +169,27 @@
     return Boolean(authSession && authSession.email && authSession.session_token);
   }
 
+  function savedCard() {
+    var profile = authSession && authSession.profile ? authSession.profile : {};
+    var card = profile.saved_card || {};
+    return card && card.has_card ? card : null;
+  }
+
+  function savedCardLabel() {
+    var card = savedCard();
+    if (!card) {
+      return "";
+    }
+    var parts = [];
+    if (card.brand) {
+      parts.push(card.brand);
+    }
+    if (card.last4) {
+      parts.push("ending in " + card.last4);
+    }
+    return parts.join(" ") || "Saved card";
+  }
+
   function setAuthMode(mode) {
     var signedIn = isSignedIn();
     loginForm.classList.toggle("hidden", signedIn || mode !== "login");
@@ -199,8 +221,15 @@
   }
 
   function updateActionButtons() {
+    var canUseSavedCard = Boolean(savedCard());
     stripeButton.disabled = !serverAvailable || !isSignedIn();
-    submitButton.disabled = !serverAvailable || !isSignedIn() || !sessionStorage.getItem(stripeSessionKey);
+    stripeButton.textContent = canUseSavedCard ? "Update card with Stripe" : "Save card securely with Stripe";
+    submitButton.disabled = !serverAvailable || !isSignedIn() || (!canUseSavedCard && !sessionStorage.getItem(stripeSessionKey));
+    if (savedCardStatus) {
+      savedCardStatus.textContent = canUseSavedCard
+        ? "Saved card: " + savedCardLabel() + ". This card will be used for this ad."
+        : "No saved card yet. Save a card with Stripe before submitting your ad.";
+    }
   }
 
   function updateAuthUi() {
@@ -391,7 +420,31 @@
     if (stripeState === "success" && sessionId) {
       sessionStorage.setItem(stripeSessionKey, sessionId);
       updateActionButtons();
-      setMessage("Your card was securely saved with Stripe. If you selected a picture, reselect the image file and submit your ad for approval.", "success");
+      setMessage("Confirming your saved card with Stripe...", "");
+      requestJson("/ads/api/card-setup/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_token: authSession && authSession.session_token,
+          stripe_session_id: sessionId,
+          advertiser_name: form.elements.advertiser_name.value,
+          business_name: form.elements.business_name ? form.elements.business_name.value : "",
+          phone: form.elements.phone.value,
+          website: form.elements.website.value
+        })
+      }).then(function (payload) {
+        if (payload.profile && authSession) {
+          authSession.profile = payload.profile;
+          localStorage.setItem(authKey, JSON.stringify(authSession));
+          applyAuthProfileToForm();
+        }
+        sessionStorage.removeItem(stripeSessionKey);
+        updateActionButtons();
+        setMessage("Your card was securely saved with Stripe" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad for approval.", "success");
+      }).catch(function (error) {
+        updateActionButtons();
+        setMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      });
     } else if (stripeState === "canceled") {
       setMessage("Card setup was canceled. No ad was submitted.", "error");
     }
@@ -574,6 +627,7 @@
         authSession.profile = payload.profile;
         localStorage.setItem(authKey, JSON.stringify(authSession));
         applyAuthProfileToForm();
+        updateActionButtons();
       }
       renderDashboard(payload.ads || []);
     }).catch(function (error) {
@@ -782,7 +836,7 @@
       return;
     }
     var stripeSession = sessionStorage.getItem(stripeSessionKey);
-    if (!stripeSession) {
+    if (!stripeSession && !savedCard()) {
       setMessage("Save your card securely with Stripe before submitting the ad.", "error");
       return;
     }
@@ -791,7 +845,9 @@
       return;
     }
     var data = new FormData(form);
-    data.append("stripe_session_id", stripeSession);
+    if (stripeSession) {
+      data.append("stripe_session_id", stripeSession);
+    }
     data.append("session_token", authSession.session_token);
     submitButton.disabled = true;
     setMessage("Submitting your ad for Hakol Kaan review...", "");
