@@ -37,6 +37,10 @@
   var dashboardStatus = document.getElementById("dashboard-status");
   var dashboardList = document.getElementById("dashboard-list");
   var refreshDashboardButton = document.getElementById("refresh-dashboard-button");
+  var layoutLightbox = document.getElementById("layout-lightbox");
+  var layoutLightboxImage = document.getElementById("layout-lightbox-image");
+  var layoutLightboxClose = document.getElementById("layout-lightbox-close");
+  var layoutLightboxBackdrop = document.getElementById("layout-lightbox-backdrop");
   var slots = [];
   var stripeSessionKey = "hakol_kaan_ads_stripe_session";
   var draftKey = "hakol_kaan_ads_draft";
@@ -111,6 +115,31 @@
   function setDashboardMessage(message, type) {
     dashboardStatus.textContent = message || "";
     dashboardStatus.className = "form-status" + (type ? " is-" + type : "");
+  }
+
+  function openLayoutLightbox(link) {
+    if (!layoutLightbox || !layoutLightboxImage || !link) {
+      return;
+    }
+    var previewImage = link.querySelector("img");
+    layoutLightboxImage.src = link.href;
+    layoutLightboxImage.alt = previewImage ? previewImage.alt : "Ad layout preview";
+    layoutLightbox.classList.remove("hidden");
+    layoutLightbox.setAttribute("aria-hidden", "false");
+    body.classList.add("is-lightbox-open");
+    if (layoutLightboxClose) {
+      layoutLightboxClose.focus();
+    }
+  }
+
+  function closeLayoutLightbox() {
+    if (!layoutLightbox || !layoutLightboxImage) {
+      return;
+    }
+    layoutLightbox.classList.add("hidden");
+    layoutLightbox.setAttribute("aria-hidden", "true");
+    layoutLightboxImage.removeAttribute("src");
+    body.classList.remove("is-lightbox-open");
   }
 
   function loadAuthSession() {
@@ -785,6 +814,23 @@
   });
 
   refreshDashboardButton.addEventListener("click", loadDashboard);
+  document.querySelectorAll(".layout-preview-link").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      openLayoutLightbox(link);
+    });
+  });
+  if (layoutLightboxClose) {
+    layoutLightboxClose.addEventListener("click", closeLayoutLightbox);
+  }
+  if (layoutLightboxBackdrop) {
+    layoutLightboxBackdrop.addEventListener("click", closeLayoutLightbox);
+  }
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && layoutLightbox && !layoutLightbox.classList.contains("hidden")) {
+      closeLayoutLightbox();
+    }
+  });
   stripeButton.disabled = true;
   submitButton.disabled = true;
   dateInput.min = today();

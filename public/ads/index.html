@@ -91,13 +91,13 @@
         <p>Each example below represents the complete sponsored picture sent to customers. A smaller number of spots gives each advertiser more visual space.</p>
       </div>
       <div class="layout-gallery">
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_01_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_01_spots.jpg?v=20260528" alt="One full-size sponsored ad placement layout"></a><figcaption><strong>1 spot</strong><span>Full picture placement</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_02_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_02_spots.jpg?v=20260528" alt="Two sponsored ad placement layout"></a><figcaption><strong>2 spots</strong><span>Half picture each</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_04_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_04_spots.jpg?v=20260528" alt="Four sponsored ad placement layout"></a><figcaption><strong>4 spots</strong><span>Quarter grid</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_06_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_06_spots.jpg?v=20260528" alt="Six sponsored ad placement layout"></a><figcaption><strong>6 spots</strong><span>Three by two grid</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_08_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_08_spots.jpg?v=20260528" alt="Eight sponsored ad placement layout"></a><figcaption><strong>8 spots</strong><span>Four by two grid</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_12_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_12_spots.jpg?v=20260528" alt="Twelve sponsored ad placement layout"></a><figcaption><strong>12 spots</strong><span>Four by three grid</span></figcaption></figure>
-        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_16_spots.jpg?v=20260528" target="_blank" rel="noopener"><img src="/assets/ad-layouts/ad_layout_16_spots.jpg?v=20260528" alt="Sixteen sponsored ad placement layout"></a><figcaption><strong>16 spots</strong><span>Four by four grid</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_01_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_01_spots.jpg?v=20260528" alt="One full-size sponsored ad placement layout"></a><figcaption><strong>1 spot</strong><span>Full picture placement</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_02_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_02_spots.jpg?v=20260528" alt="Two sponsored ad placement layout"></a><figcaption><strong>2 spots</strong><span>Half picture each</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_04_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_04_spots.jpg?v=20260528" alt="Four sponsored ad placement layout"></a><figcaption><strong>4 spots</strong><span>Quarter grid</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_06_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_06_spots.jpg?v=20260528" alt="Six sponsored ad placement layout"></a><figcaption><strong>6 spots</strong><span>Three by two grid</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_08_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_08_spots.jpg?v=20260528" alt="Eight sponsored ad placement layout"></a><figcaption><strong>8 spots</strong><span>Four by two grid</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_12_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_12_spots.jpg?v=20260528" alt="Twelve sponsored ad placement layout"></a><figcaption><strong>12 spots</strong><span>Four by three grid</span></figcaption></figure>
+        <figure class="layout-card"><a class="layout-preview-link" href="/assets/ad-layouts/ad_layout_16_spots.jpg?v=20260528"><img src="/assets/ad-layouts/ad_layout_16_spots.jpg?v=20260528" alt="Sixteen sponsored ad placement layout"></a><figcaption><strong>16 spots</strong><span>Four by four grid</span></figcaption></figure>
       </div>
     </section>
 
@@ -306,6 +306,14 @@
       </div>
     </section>
   </main>
+
+  <div class="layout-lightbox hidden" id="layout-lightbox" aria-hidden="true">
+    <button class="layout-lightbox-backdrop" id="layout-lightbox-backdrop" type="button" aria-label="Close ad preview"></button>
+    <div class="layout-lightbox-frame" role="dialog" aria-modal="true" aria-label="Ad layout preview">
+      <button class="layout-lightbox-close" id="layout-lightbox-close" type="button">Close</button>
+      <img id="layout-lightbox-image" alt="">
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="footer-inner">
