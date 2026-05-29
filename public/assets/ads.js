@@ -160,7 +160,7 @@
     if (profile.full_name && !form.elements.advertiser_name.value) {
       form.elements.advertiser_name.value = profile.full_name;
     }
-    if (profile.business_name && !form.elements.business_name.value) {
+    if (form.elements.business_name && profile.business_name && !form.elements.business_name.value) {
       form.elements.business_name.value = profile.business_name;
     }
     if (profile.phone && !form.elements.phone.value) {
@@ -598,7 +598,6 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         full_name: signupForm.elements.full_name.value,
-        business_name: signupForm.elements.business_name.value,
         email: signupForm.elements.email.value,
         phone: signupForm.elements.phone.value,
         password: password,
