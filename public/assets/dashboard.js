@@ -14,6 +14,7 @@
   var signOutButton = document.getElementById("dashboard-sign-out");
   var unavailableMessage = "Advertising dashboard is temporarily unavailable. Please try again later.";
   var authSession = readSession();
+  var accountEmail = "";
   var cancelFeePercent = "4%";
 
   if (!apiBase || !dashboardList) {
@@ -27,8 +28,11 @@
   function readSession() {
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
-      if (session && session.email && session.session_token) {
-        return session;
+      if (session && session.session_token) {
+        if (Object.keys(session).length !== 1) {
+          localStorage.setItem(authKey, JSON.stringify({ session_token: session.session_token }));
+        }
+        return { session_token: session.session_token };
       }
     } catch (error) {
       localStorage.removeItem(authKey);
@@ -37,17 +41,18 @@
   }
 
   function saveSession(session) {
-    authSession = session && session.email && session.session_token ? session : null;
+    authSession = session && session.session_token ? { session_token: session.session_token } : null;
     if (authSession) {
-      localStorage.setItem(authKey, JSON.stringify(authSession));
+      localStorage.setItem(authKey, JSON.stringify({ session_token: authSession.session_token }));
     } else {
       localStorage.removeItem(authKey);
+      accountEmail = "";
     }
     window.dispatchEvent(new CustomEvent("hakolAdsAuthChanged"));
   }
 
   function isSignedIn() {
-    return Boolean(authSession && authSession.email && authSession.session_token);
+    return Boolean(authSession && authSession.session_token);
   }
 
   function setDashboardMessage(message, type) {
@@ -154,7 +159,8 @@
   function renderProfile(profile) {
     profile = profile || {};
     profileDetails.innerHTML = "";
-    addDetail(profileDetails, "Signed-in email", authSession.email);
+    accountEmail = profile.email || accountEmail || "";
+    addDetail(profileDetails, "Signed-in email", accountEmail);
     addDetail(profileDetails, "Name", profile.full_name || "");
     addDetail(profileDetails, "Business", profile.business_name || "");
     addDetail(profileDetails, "Phone", profile.phone || "");
@@ -172,7 +178,7 @@
       setDashboardMessage("You do not have any website ad requests yet.", "");
       return;
     }
-    setDashboardMessage("Showing " + ads.length + " ad request(s) for " + authSession.email + ".", "success");
+    setDashboardMessage("Showing " + ads.length + " ad request(s)" + (accountEmail ? " for " + accountEmail : "") + ".", "success");
     ads.forEach(function (ad) {
       if (ad.cancel_fee_percent) {
         cancelFeePercent = ad.cancel_fee_percent;
@@ -324,10 +330,9 @@
       body: JSON.stringify({ session_token: authSession.session_token })
     }).then(function (payload) {
       if (payload.profile && authSession) {
-        authSession.profile = payload.profile;
-        localStorage.setItem(authKey, JSON.stringify(authSession));
+        accountEmail = payload.profile.email || payload.email || accountEmail;
       }
-      renderProfile((authSession && authSession.profile) || payload.profile || {});
+      renderProfile(payload.profile || {});
       renderAds(payload.ads || []);
     }).catch(function (error) {
       if (/sign in/i.test(error.message)) {

@@ -43,12 +43,11 @@
   var layoutLightboxClose = document.getElementById("layout-lightbox-close");
   var layoutLightboxBackdrop = document.getElementById("layout-lightbox-backdrop");
   var slots = [];
-  var stripeSessionKey = "hakol_kaan_ads_stripe_session";
-  var draftKey = "hakol_kaan_ads_draft";
   var authKey = "hakol_kaan_ads_auth";
   var serverAvailable = false;
   var unavailableMessage = "Advertising requests are temporarily unavailable. Please try again later.";
   var authSession = loadAuthSession();
+  var authProfile = null;
   var pendingAuthEmail = "";
   var pendingAuthPurpose = "signup";
   var pendingResetEmail = "";
@@ -172,8 +171,11 @@
   function loadAuthSession() {
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
-      if (session && session.email && session.session_token) {
-        return session;
+      if (session && session.session_token) {
+        if (Object.keys(session).length !== 1) {
+          localStorage.setItem(authKey, JSON.stringify({ session_token: session.session_token }));
+        }
+        return { session_token: session.session_token };
       }
     } catch (error) {
       localStorage.removeItem(authKey);
@@ -182,22 +184,23 @@
   }
 
   function saveAuthSession(session) {
-    authSession = session && session.email && session.session_token ? session : null;
+    authSession = session && session.session_token ? { session_token: session.session_token } : null;
     if (authSession) {
-      localStorage.setItem(authKey, JSON.stringify(authSession));
+      localStorage.setItem(authKey, JSON.stringify({ session_token: authSession.session_token }));
     } else {
       localStorage.removeItem(authKey);
+      authProfile = null;
     }
     updateAuthUi();
     window.dispatchEvent(new CustomEvent("hakolAdsAuthChanged"));
   }
 
   function isSignedIn() {
-    return Boolean(authSession && authSession.email && authSession.session_token);
+    return Boolean(authSession && authSession.session_token);
   }
 
   function savedCard() {
-    var profile = authSession && authSession.profile ? authSession.profile : {};
+    var profile = authProfile || {};
     var card = profile.saved_card || {};
     return card && card.has_card ? card : null;
   }
@@ -233,9 +236,11 @@
       form.elements.email.readOnly = false;
       return;
     }
-    var profile = authSession.profile || {};
-    form.elements.email.value = authSession.email;
-    form.elements.email.readOnly = true;
+    var profile = authProfile || {};
+    if (profile.email) {
+      form.elements.email.value = profile.email;
+      form.elements.email.readOnly = true;
+    }
     if (profile.full_name && !form.elements.advertiser_name.value) {
       form.elements.advertiser_name.value = profile.full_name;
     }
@@ -251,7 +256,7 @@
     var canUseSavedCard = Boolean(savedCard());
     stripeButton.disabled = !serverAvailable || !isSignedIn();
     stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment with Stripe";
-    submitButton.disabled = !serverAvailable || !isSignedIn() || (!canUseSavedCard && !sessionStorage.getItem(stripeSessionKey));
+    submitButton.disabled = !serverAvailable || !isSignedIn() || !canUseSavedCard;
     if (savedCardStatus) {
       savedCardStatus.textContent = canUseSavedCard
         ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
@@ -274,10 +279,15 @@
       heroAuthButton.href = "#book-ad";
     }
     if (signedIn) {
-      accountEmail.textContent = authSession.email;
-      authEmailInput.value = authSession.email;
+      accountEmail.textContent = (authProfile && authProfile.email) || "your account";
+      if (authProfile && authProfile.email) {
+        authEmailInput.value = authProfile.email;
+      }
       applyAuthProfileToForm();
       setAuthMessage("You are signed in. You can place ads and view your dashboard.", "success");
+      if (!authProfile) {
+        refreshAuthProfile();
+      }
     } else {
       form.elements.email.readOnly = false;
     }
@@ -309,6 +319,31 @@
         }
         return payload;
       });
+    });
+  }
+
+  function refreshAuthProfile() {
+    if (!isSignedIn()) {
+      return Promise.resolve();
+    }
+    return requestJson("/ads/api/dashboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_token: authSession.session_token })
+    }).then(function (payload) {
+      authProfile = payload.profile || {};
+      applyAuthProfileToForm();
+      updateActionButtons();
+      if (accountEmail) {
+        accountEmail.textContent = authProfile.email || "your account";
+      }
+      if (authEmailInput && authProfile.email) {
+        authEmailInput.value = authProfile.email;
+      }
+    }).catch(function (error) {
+      if (/sign in/i.test(error.message)) {
+        saveAuthSession(null);
+      }
     });
   }
 
@@ -386,65 +421,11 @@
     textField.querySelector("textarea").required = isText;
   }
 
-  function saveDraft() {
-    var fields = ["slot_date", "hour", "business_name", "advertiser_name", "email", "phone", "creative_type", "ad_text", "bid_amount", "sms_consent"];
-    var draft = {};
-    fields.forEach(function (name) {
-      var input = form.elements[name];
-      if (!input) {
-        return;
-      }
-      if (input instanceof RadioNodeList) {
-        draft[name] = input.value;
-      } else if (input.type === "checkbox") {
-        draft[name] = input.checked;
-      } else {
-        draft[name] = input.value;
-      }
-    });
-    sessionStorage.setItem(draftKey, JSON.stringify(draft));
-  }
-
-  function restoreDraft() {
-    var raw = sessionStorage.getItem(draftKey);
-    if (!raw) {
-      return Promise.resolve();
-    }
-    var draft;
-    try {
-      draft = JSON.parse(raw);
-    } catch (error) {
-      return Promise.resolve();
-    }
-    ["slot_date", "business_name", "advertiser_name", "email", "phone", "ad_text", "bid_amount"].forEach(function (name) {
-      if (form.elements[name] && draft[name] !== undefined) {
-        form.elements[name].value = draft[name];
-      }
-    });
-    if (draft.creative_type) {
-      var adChoice = form.querySelector('input[name="creative_type"][value="' + draft.creative_type + '"]');
-      if (adChoice) {
-        adChoice.checked = true;
-      }
-    }
-    if (form.elements.sms_consent) {
-      form.elements.sms_consent.checked = Boolean(draft.sms_consent);
-    }
-    adTypeChanged();
-    return loadSlots().then(function () {
-      if (draft.hour) {
-        slotSelect.value = draft.hour;
-        drawSlotSummary();
-      }
-    });
-  }
-
   function cardSetupReturn() {
     var query = new URLSearchParams(window.location.search);
     var stripeState = query.get("stripe");
     var sessionId = query.get("session_id");
     if (stripeState === "success" && sessionId) {
-      sessionStorage.setItem(stripeSessionKey, sessionId);
       updateActionButtons();
       setMessage("Confirming your payment setup with Stripe...", "");
       requestJson("/ads/api/card-setup/confirm", {
@@ -460,13 +441,11 @@
         })
       }).then(function (payload) {
         if (payload.profile && authSession) {
-          authSession.profile = payload.profile;
-          localStorage.setItem(authKey, JSON.stringify(authSession));
+          authProfile = payload.profile;
           applyAuthProfileToForm();
         }
-        sessionStorage.removeItem(stripeSessionKey);
         updateActionButtons();
-        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad.", "success");
+        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". Choose your placement and ad details, then submit your ad.", "success");
       }).catch(function (error) {
         updateActionButtons();
         setMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
@@ -505,7 +484,8 @@
         authCodeInput.focus();
         return;
       }
-      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      authProfile = payload.profile || {};
+      saveAuthSession({ session_token: payload.session_token });
       loginForm.elements.password.value = "";
       closeAccountModal();
       document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -551,7 +531,8 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: pendingAuthEmail || authEmailInput.value, code: authCodeInput.value, purpose: pendingAuthPurpose })
     }).then(function (payload) {
-      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      authProfile = payload.profile || {};
+      saveAuthSession({ session_token: payload.session_token });
       authCodeInput.value = "";
       signupForm.reset();
       closeAccountModal();
@@ -593,7 +574,8 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: pendingResetEmail, code: resetPasswordForm.elements.code.value, password: password })
     }).then(function (payload) {
-      saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
+      authProfile = payload.profile || {};
+      saveAuthSession({ session_token: payload.session_token });
       resetPasswordForm.reset();
       closeAccountModal();
       document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -643,13 +625,16 @@
 
   signOutButton.addEventListener("click", function () {
     saveAuthSession(null);
-    sessionStorage.removeItem(stripeSessionKey);
     updateActionButtons();
     setAuthMessage("You are signed out.", "");
   });
 
   function reloadAuthSessionFromStorage() {
+    var previousToken = authSession && authSession.session_token;
     authSession = loadAuthSession();
+    if (!authSession || authSession.session_token !== previousToken) {
+      authProfile = null;
+    }
     updateAuthUi();
   }
 
@@ -667,7 +652,6 @@
       setMessage("Enter your name, email, and mobile number before setting up payment.", "error");
       return;
     }
-    saveDraft();
     stripeButton.disabled = true;
     setMessage("Opening Stripe payment setup...", "");
     requestJson("/ads/api/card-setup", {
@@ -676,6 +660,7 @@
       body: JSON.stringify({
         session_token: authSession.session_token,
         advertiser_name: form.elements.advertiser_name.value,
+        business_name: form.elements.business_name ? form.elements.business_name.value : "",
         email: form.elements.email.value,
         phone: form.elements.phone.value,
         website: form.elements.website.value
@@ -703,8 +688,7 @@
       openAccountModal("login");
       return;
     }
-    var stripeSession = sessionStorage.getItem(stripeSessionKey);
-    if (!stripeSession && !savedCard()) {
+    if (!savedCard()) {
       setMessage("Set up payment with Stripe before submitting the ad.", "error");
       return;
     }
@@ -713,16 +697,11 @@
       return;
     }
     var data = new FormData(form);
-    if (stripeSession) {
-      data.append("stripe_session_id", stripeSession);
-    }
     data.append("session_token", authSession.session_token);
     submitButton.disabled = true;
     setMessage("Submitting your ad...", "");
     requestJson("/ads/api/submit", { method: "POST", body: data })
       .then(function (payload) {
-        sessionStorage.removeItem(stripeSessionKey);
-        sessionStorage.removeItem(draftKey);
         setMessage("Your ad request was sent. Request ID: " + payload.ad_id + ". Opening your dashboard...", "success");
         setTimeout(function () {
           window.location.href = "/dashboard/";
@@ -771,10 +750,7 @@
   retryServerButton.addEventListener("click", loadSlots);
   window.addEventListener("storage", reloadAuthSessionFromStorage);
   window.addEventListener("hakolAdsAuthChanged", reloadAuthSessionFromStorage);
-  restoreDraft().then(function () {
-    if (!sessionStorage.getItem(draftKey)) {
-      loadSlots();
-    }
+  loadSlots().then(function () {
     cardSetupReturn();
     updateAuthUi();
     if (window.location.hash === "#ad-account") {

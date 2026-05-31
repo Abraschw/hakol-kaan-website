@@ -8,18 +8,16 @@
   function readSession() {
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
-      if (session && session.email && session.session_token) {
-        return session;
+      if (session && session.session_token) {
+        if (Object.keys(session).length !== 1) {
+          localStorage.setItem(authKey, JSON.stringify({ session_token: session.session_token }));
+        }
+        return { session_token: session.session_token };
       }
     } catch (error) {
       localStorage.removeItem(authKey);
     }
     return null;
-  }
-
-  function displayName(session) {
-    var profile = session && session.profile ? session.profile : {};
-    return profile.full_name || profile.business_name || session.email || "Profile";
   }
 
   function isAdsPage() {
@@ -30,9 +28,9 @@
     var session = readSession();
     accountLinks.forEach(function (accountLink) {
       if (session) {
-        accountLink.textContent = displayName(session);
+        accountLink.textContent = "Dashboard";
         accountLink.href = "/dashboard/";
-        accountLink.title = "Open advertiser profile and dashboard";
+        accountLink.title = "Open advertiser dashboard";
         accountLink.classList.add("is-signed-in");
       } else {
         accountLink.textContent = "Sign in";
@@ -85,13 +83,7 @@
     }
     var session = readSession();
     if (session) {
-      drawerAccount.innerHTML = "";
-      var name = document.createElement("strong");
-      name.textContent = displayName(session);
-      var email = document.createElement("span");
-      email.textContent = session.email || "";
-      drawerAccount.appendChild(name);
-      drawerAccount.appendChild(email);
+      drawerAccount.innerHTML = "<strong>Signed in</strong><span>Open your dashboard to see your advertiser details.</span>";
       if (drawerSignOut) {
         drawerSignOut.classList.remove("hidden");
       }
