@@ -215,7 +215,7 @@
     if (card.last4) {
       parts.push("ending in " + card.last4);
     }
-    return parts.join(" ") || "Saved card";
+    return parts.join(" ") || "Payment method";
   }
 
   function setAuthMode(mode) {
@@ -251,12 +251,12 @@
   function updateActionButtons() {
     var canUseSavedCard = Boolean(savedCard());
     stripeButton.disabled = !serverAvailable || !isSignedIn();
-    stripeButton.textContent = canUseSavedCard ? "Update card with Stripe" : "Save card securely with Stripe";
+    stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment with Stripe";
     submitButton.disabled = !serverAvailable || !isSignedIn() || (!canUseSavedCard && !sessionStorage.getItem(stripeSessionKey));
     if (savedCardStatus) {
       savedCardStatus.textContent = canUseSavedCard
-        ? "Saved card: " + savedCardLabel() + ". This card will be used for this ad."
-        : "No saved card yet. Save a card with Stripe before submitting your ad.";
+        ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
+        : "No payment method is set up yet. Set up payment with Stripe before submitting your ad.";
     }
   }
 
@@ -448,7 +448,7 @@
     if (stripeState === "success" && sessionId) {
       sessionStorage.setItem(stripeSessionKey, sessionId);
       updateActionButtons();
-      setMessage("Confirming your saved card with Stripe...", "");
+      setMessage("Confirming your payment setup with Stripe...", "");
       requestJson("/ads/api/card-setup/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -468,13 +468,13 @@
         }
         sessionStorage.removeItem(stripeSessionKey);
         updateActionButtons();
-        setMessage("Your card was securely saved with Stripe" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad for approval.", "success");
+        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad for approval.", "success");
       }).catch(function (error) {
         updateActionButtons();
         setMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
       });
     } else if (stripeState === "canceled") {
-      setMessage("Card setup was canceled. No ad was submitted.", "error");
+      setMessage("Payment setup was canceled. No ad was submitted.", "error");
     }
     if (stripeState) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
@@ -495,7 +495,7 @@
       payment_failed: "Payment failed",
       sold_out: "Approved, but that fixed spot was already filled",
       reservation_failed: "Approved, but reservation could not be completed",
-      hold_failed: "Approved, but the temporary card check failed"
+      hold_failed: "Approved, but the temporary payment authorization failed"
     };
     var message = (statusNames[ad.status] || ad.status || "Status unavailable") + ". Placement: " + ad.slot + ".";
     if (ad.kind === "bid") {
@@ -841,17 +841,17 @@
       return;
     }
     if (!isSignedIn()) {
-      setMessage("Sign in with your email before saving a card.", "error");
+      setMessage("Sign in with your email before setting up payment.", "error");
       openAccountModal("login");
       return;
     }
     if (!form.elements.advertiser_name.value || !form.elements.email.value || !form.elements.phone.value) {
-      setMessage("Enter your name, email, and mobile number before securely saving a card.", "error");
+      setMessage("Enter your name, email, and mobile number before setting up payment.", "error");
       return;
     }
     saveDraft();
     stripeButton.disabled = true;
-    setMessage("Opening Stripe secure card setup...", "");
+    setMessage("Opening Stripe payment setup...", "");
     requestJson("/ads/api/card-setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -887,7 +887,7 @@
     }
     var stripeSession = sessionStorage.getItem(stripeSessionKey);
     if (!stripeSession && !savedCard()) {
-      setMessage("Save your card securely with Stripe before submitting the ad.", "error");
+      setMessage("Set up payment with Stripe before submitting the ad.", "error");
       return;
     }
     if (slotBlockedByDate(selectedSlot())) {
