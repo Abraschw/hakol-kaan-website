@@ -124,14 +124,7 @@
       '  <button class="site-drawer-close" type="button">Close</button>' +
       '  <div class="site-drawer-account" data-drawer-account></div>' +
       '  <nav class="site-drawer-nav">' +
-      '    <a href="/dashboard/#profile">Profile & details</a>' +
-      '    <a href="/dashboard/">Ad dashboard</a>' +
-      '    <a href="/ads/">Place ad</a>' +
-      '    <a href="/">Home</a>' +
-      '    <a href="/about/">About</a>' +
-      '    <a href="/contact/">Contact</a>' +
-      '    <a href="/terms/">Terms</a>' +
-      '    <a href="/privacy/">Privacy</a>' +
+      '    <a href="/dashboard/">Dashboard</a>' +
       '  </nav>' +
       '  <button class="link-button drawer-sign-out hidden" type="button">Sign out</button>' +
       '</aside>';
