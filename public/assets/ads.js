@@ -255,12 +255,12 @@
   function updateActionButtons() {
     var canUseSavedCard = Boolean(savedCard());
     stripeButton.disabled = !serverAvailable || !isSignedIn();
-    stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment with Stripe";
+    stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment";
     submitButton.disabled = !serverAvailable || !isSignedIn() || !canUseSavedCard;
     if (savedCardStatus) {
       savedCardStatus.textContent = canUseSavedCard
         ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
-        : "No payment method is set up yet. Set up payment with Stripe before submitting your ad.";
+        : "No payment method is set up yet. Set up payment before submitting your ad.";
     }
   }
 
@@ -427,7 +427,7 @@
     var sessionId = query.get("session_id");
     if (stripeState === "success" && sessionId) {
       updateActionButtons();
-      setMessage("Confirming your payment setup with Stripe...", "");
+      setMessage("Confirming your payment setup...", "");
       requestJson("/ads/api/card-setup/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -653,7 +653,7 @@
       return;
     }
     stripeButton.disabled = true;
-    setMessage("Opening Stripe payment setup...", "");
+    setMessage("Opening secure payment setup...", "");
     requestJson("/ads/api/card-setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -689,7 +689,7 @@
       return;
     }
     if (!savedCard()) {
-      setMessage("Set up payment with Stripe before submitting the ad.", "error");
+      setMessage("Set up payment before submitting the ad.", "error");
       return;
     }
     if (slotBlockedByDate(selectedSlot())) {
