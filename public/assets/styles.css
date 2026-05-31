@@ -375,12 +375,11 @@ h3 {
 
 @media (max-width: 860px) {
   .site-header {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
   }
 
   .nav {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .hero,
@@ -392,7 +391,15 @@ h3 {
 }
 
 .nav-feature {
-  color: var(--ink);
+  color: #fff !important;
+  background: var(--green);
+  box-shadow: 0 10px 24px rgba(15, 92, 69, 0.16);
+}
+
+.nav a.nav-feature:hover,
+.nav a.nav-feature[aria-current="page"] {
+  color: #fff;
+  background: #0c4f3b;
 }
 
 .ads-hero {
