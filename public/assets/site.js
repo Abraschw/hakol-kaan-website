@@ -39,6 +39,17 @@
     }
   }
 
+  if (accountLink) {
+    accountLink.addEventListener("click", function (event) {
+      var session = readSession();
+      var isAdsPage = window.location.pathname.replace(/\/+$/, "") === "/ads";
+      if (!session && isAdsPage) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent("hakolOpenAdsAccount"));
+      }
+    });
+  }
+
   updateAccountLink();
   window.addEventListener("storage", updateAccountLink);
   window.addEventListener("hakolAdsAuthChanged", updateAccountLink);

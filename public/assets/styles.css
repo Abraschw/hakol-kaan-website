@@ -831,6 +831,60 @@ button.button:disabled {
   border-radius: 1.35rem;
 }
 
+.account-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2rem);
+}
+
+.account-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 35, 31, 0.48);
+  border: 0;
+  cursor: pointer;
+}
+
+.account-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(820px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  padding: clamp(1rem, 3vw, 1.6rem);
+  background:
+    radial-gradient(circle at top left, rgba(231, 170, 47, 0.16), transparent 16rem),
+    #fbf6ea;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.account-modal-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  padding: 0.35rem 0.7rem;
+  color: var(--green);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.is-account-modal-open {
+  overflow: hidden;
+}
+
+.account-modal .section-heading {
+  padding-right: 4rem;
+}
+
 .auth-card {
   display: grid;
   gap: 1rem;

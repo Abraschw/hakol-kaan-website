@@ -25,6 +25,9 @@
   var showSignupButton = document.getElementById("show-signup-button");
   var forgotPasswordButton = document.getElementById("forgot-password-button");
   var backToLoginButton = document.getElementById("back-to-login-button");
+  var accountModal = document.getElementById("ad-account");
+  var accountModalClose = document.getElementById("account-modal-close");
+  var accountModalBackdrop = document.getElementById("account-modal-backdrop");
   var authEmailInput = document.getElementById("auth-email");
   var authCodeInput = document.getElementById("auth-code");
   var forgotEmailInput = document.getElementById("forgot-email");
@@ -143,6 +146,30 @@
     body.classList.remove("is-lightbox-open");
   }
 
+  function openAccountModal(mode) {
+    if (!accountModal) {
+      return;
+    }
+    if (mode) {
+      setAuthMode(mode);
+    }
+    accountModal.classList.remove("hidden");
+    accountModal.setAttribute("aria-hidden", "false");
+    body.classList.add("is-account-modal-open");
+    if (!isSignedIn() && authEmailInput) {
+      authEmailInput.focus();
+    }
+  }
+
+  function closeAccountModal() {
+    if (!accountModal) {
+      return;
+    }
+    accountModal.classList.add("hidden");
+    accountModal.setAttribute("aria-hidden", "true");
+    body.classList.remove("is-account-modal-open");
+  }
+
   function loadAuthSession() {
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
@@ -244,8 +271,8 @@
     signedOutNote.classList.toggle("hidden", signedIn);
     bookingContent.classList.toggle("hidden", !signedIn);
     if (heroAuthButton) {
-      heroAuthButton.textContent = signedIn ? "Place an ad" : "Sign in to advertise";
-      heroAuthButton.href = signedIn ? "#book-ad" : "#ad-account";
+      heroAuthButton.textContent = "Place an ad";
+      heroAuthButton.href = "#book-ad";
     }
     if (signedIn) {
       accountEmail.textContent = authSession.email;
@@ -255,7 +282,7 @@
       loadDashboard();
     } else {
       form.elements.email.readOnly = false;
-      setDashboardMessage("Sign in above to see your ad dashboard.", "");
+      setDashboardMessage("Use the profile button at the top right to sign in and see your ad dashboard.", "");
       dashboardList.innerHTML = "";
     }
     updateActionButtons();
@@ -614,7 +641,7 @@
 
   function loadDashboard() {
     if (!isSignedIn()) {
-      setDashboardMessage("Sign in above to see your ad dashboard.", "");
+      setDashboardMessage("Use the profile button at the top right to sign in and see your ad dashboard.", "");
       dashboardList.innerHTML = "";
       return Promise.resolve();
     }
@@ -667,6 +694,7 @@
       }
       saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
       loginForm.elements.password.value = "";
+      closeAccountModal();
       document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
       setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
@@ -713,6 +741,7 @@
       saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
       authCodeInput.value = "";
       signupForm.reset();
+      closeAccountModal();
       document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
       setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
@@ -753,6 +782,7 @@
     }).then(function (payload) {
       saveAuthSession({ email: payload.email, session_token: payload.session_token, profile: payload.profile || {} });
       resetPasswordForm.reset();
+      closeAccountModal();
       document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
       setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
@@ -780,6 +810,24 @@
     setAuthMessage("", "");
   });
 
+  if (accountModalClose) {
+    accountModalClose.addEventListener("click", closeAccountModal);
+  }
+
+  if (accountModalBackdrop) {
+    accountModalBackdrop.addEventListener("click", closeAccountModal);
+  }
+
+  window.addEventListener("hakolOpenAdsAccount", function () {
+    openAccountModal(isSignedIn() ? "account" : "login");
+  });
+
+  window.HakolAdsAuth = {
+    openAccount: function () {
+      openAccountModal(isSignedIn() ? "account" : "login");
+    }
+  };
+
   signOutButton.addEventListener("click", function () {
     saveAuthSession(null);
     sessionStorage.removeItem(stripeSessionKey);
@@ -794,7 +842,7 @@
     }
     if (!isSignedIn()) {
       setMessage("Sign in with your email before saving a card.", "error");
-      document.getElementById("ad-account").scrollIntoView({ behavior: "smooth", block: "start" });
+      openAccountModal("login");
       return;
     }
     if (!form.elements.advertiser_name.value || !form.elements.email.value || !form.elements.phone.value) {
@@ -834,6 +882,7 @@
     }
     if (!isSignedIn()) {
       setMessage("Sign in with your email before submitting an ad.", "error");
+      openAccountModal("login");
       return;
     }
     var stripeSession = sessionStorage.getItem(stripeSessionKey);
@@ -887,6 +936,9 @@
     if (event.key === "Escape" && layoutLightbox && !layoutLightbox.classList.contains("hidden")) {
       closeLayoutLightbox();
     }
+    if (event.key === "Escape" && accountModal && !accountModal.classList.contains("hidden")) {
+      closeAccountModal();
+    }
   });
   stripeButton.disabled = true;
   submitButton.disabled = true;
@@ -905,5 +957,8 @@
     }
     cardSetupReturn();
     updateAuthUi();
+    if (window.location.hash === "#ad-account") {
+      openAccountModal(isSignedIn() ? "account" : "login");
+    }
   });
 }());
