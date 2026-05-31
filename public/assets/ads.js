@@ -334,14 +334,14 @@
       return;
     }
     if (slot.kind === "fixed") {
-      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot. You are charged only after approval and successful reservation.";
+      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot. You are charged only after successful reservation.";
       return;
     }
     bidField.classList.remove("hidden");
     bidAmount.required = true;
     bidAmount.min = slot.min_bid;
     bidAmount.placeholder = "At least " + money(slot.min_bid);
-    var current = slot.highest_bid ? " Current highest approved bid: " + money(slot.highest_bid) + "." : "";
+    var current = slot.highest_bid ? " Current highest bid: " + money(slot.highest_bid) + "." : "";
     slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " Bidding closes five minutes before the scheduled send.";
   }
 
@@ -468,7 +468,7 @@
         }
         sessionStorage.removeItem(stripeSessionKey);
         updateActionButtons();
-        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad for approval.", "success");
+        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". If you selected a picture, reselect the image file and submit your ad.", "success");
       }).catch(function (error) {
         updateActionButtons();
         setMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
@@ -483,19 +483,19 @@
 
   function statusText(ad) {
     var statusNames = {
-      pending_approval: "Pending Hakol Kaan approval",
-      active_bid: "Approved and actively bidding",
-      approved_paid: "Approved and paid",
-      paid: "Approved, paid, and scheduled",
+      pending_approval: "Pending",
+      active_bid: "Actively bidding",
+      approved_paid: "Paid",
+      paid: "Paid and scheduled",
       won: "Winning bid selected",
       charged: "Winning bid charged and scheduled",
       sent: "Ad sent",
-      rejected: "Not approved",
+      rejected: "Not accepted",
       lost: "Bid did not win",
       payment_failed: "Payment failed",
-      sold_out: "Approved, but that fixed spot was already filled",
-      reservation_failed: "Approved, but reservation could not be completed",
-      hold_failed: "Approved, but the temporary payment authorization failed"
+      sold_out: "That fixed spot was already filled",
+      reservation_failed: "Reservation could not be completed",
+      hold_failed: "The temporary payment authorization failed"
     };
     var message = (statusNames[ad.status] || ad.status || "Status unavailable") + ". Placement: " + ad.slot + ".";
     if (ad.kind === "bid") {
@@ -900,12 +900,12 @@
     }
     data.append("session_token", authSession.session_token);
     submitButton.disabled = true;
-    setMessage("Submitting your ad for Hakol Kaan review...", "");
+    setMessage("Submitting your ad...", "");
     requestJson("/ads/api/submit", { method: "POST", body: data })
       .then(function (payload) {
         sessionStorage.removeItem(stripeSessionKey);
         sessionStorage.removeItem(draftKey);
-        setMessage("Your ad request was sent for approval. Request ID: " + payload.ad_id + ". You can see it in your dashboard below.", "success");
+        setMessage("Your ad request was sent. Request ID: " + payload.ad_id + ". You can see it in your dashboard below.", "success");
         loadDashboard();
         document.getElementById("ad-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
       })

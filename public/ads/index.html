@@ -200,7 +200,7 @@
       <div class="section-heading">
         <p class="kicker">Request placement</p>
         <h2>Submit your ad.</h2>
-        <p>All times are Eastern Time. Sign in first, then choose a placement. Before you submit, please note that your ad goes through Hakol Kaan review. A requested fixed spot is confirmed only after review and successful payment. A bid becomes active only after review and a successful temporary payment authorization.</p>
+        <p>All times are Eastern Time. Sign in first, then choose a placement. A requested fixed spot is confirmed after successful payment. A bid becomes active after a successful temporary payment authorization.</p>
       </div>
       <div class="signed-out-note" id="signed-out-note">
         <p>Use the profile button at the top right to sign in before placing an ad or viewing your dashboard.</p>
@@ -257,20 +257,21 @@
             <label class="field hidden" id="ad-text-field">Exact ad text
               <textarea name="ad_text" rows="5" maxlength="600" placeholder="Write the words you want displayed in your ad picture."></textarea>
             </label>
-            <p class="fine-print">Advertisers are responsible for truthful and lawful ads. Hakol Kaan may reject misleading, unsafe, or prohibited content under our <a href="/terms/">Terms</a>.</p>
+            <p class="fine-print">Advertisers are responsible for truthful and lawful ads under our <a href="/terms/">Terms</a>.</p>
           </div>
 
           <div class="form-step payment-step">
             <p class="form-step-label">4. Payment and updates</p>
             <p>Payment setup opens through Stripe. Returning from Stripe does not charge you.</p>
             <p class="saved-card-status" id="saved-card-status">No payment method is set up yet.</p>
+            <p class="fine-print">Before pressing submit, please note that your ad goes through Hakol Kaan review before it can run.</p>
             <label class="check-line">
               <input id="sms-consent" name="sms_consent" type="checkbox" value="yes" required>
-              <span>I agree to receive SMS/MMS messages from Hakol Kaan about this ad request, including review, payment, bidding, and placement status, at the number provided. Message frequency varies. Message and data rates may apply. Reply STOP to opt out and HELP for help.</span>
+              <span>I agree to receive SMS/MMS messages from Hakol Kaan about this ad request, including payment, bidding, and placement status, at the number provided. Message frequency varies. Message and data rates may apply. Reply STOP to opt out and HELP for help.</span>
             </label>
             <div class="button-row">
               <button class="button secondary" id="stripe-button" type="button" disabled>Set up payment with Stripe</button>
-              <button class="button" id="submit-ad-button" type="submit" disabled>Submit ad for approval</button>
+              <button class="button" id="submit-ad-button" type="submit" disabled>Submit ad</button>
             </div>
             <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
             <button class="retry-button hidden" id="retry-server-button" type="button">Try connecting again</button>
@@ -282,9 +283,8 @@
           <ol>
             <li>Set up payment through Stripe.</li>
             <li>Submit your picture or text ad.</li>
-            <li>Your ad goes through Hakol Kaan review before it can run.</li>
-            <li>For a fixed-price ad, your payment method is charged only after review and available placement.</li>
-            <li>For a bidding ad, review activates your bid after a temporary payment authorization that is released right away.</li>
+            <li>For a fixed-price ad, your payment method is charged when placement is available and confirmed.</li>
+            <li>For a bidding ad, your bid becomes active after a temporary payment authorization that is released right away.</li>
             <li>If your bid wins, your payment method is charged five minutes before the scheduled send.</li>
             <li>Return to this page and sign in with the same email to see all your ads and increase active bids.</li>
           </ol>
