@@ -399,6 +399,21 @@ h3 {
   background: #0c4f3b;
 }
 
+.account-link {
+  max-width: min(16rem, 34vw);
+  overflow: hidden;
+  color: var(--green) !important;
+  background: rgba(15, 92, 69, 0.08);
+  border: 1px solid rgba(15, 92, 69, 0.16);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-link.is-signed-in {
+  background: rgba(231, 170, 47, 0.18);
+  border-color: rgba(231, 170, 47, 0.38);
+}
+
 .ads-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);

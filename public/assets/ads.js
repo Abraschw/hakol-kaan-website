@@ -163,6 +163,7 @@
       localStorage.removeItem(authKey);
     }
     updateAuthUi();
+    window.dispatchEvent(new CustomEvent("hakolAdsAuthChanged"));
   }
 
   function isSignedIn() {
