@@ -38,9 +38,6 @@
   var signOutButton = document.getElementById("sign-out-button");
   var signedOutNote = document.getElementById("signed-out-note");
   var bookingContent = document.getElementById("booking-content");
-  var dashboardStatus = document.getElementById("dashboard-status");
-  var dashboardList = document.getElementById("dashboard-list");
-  var refreshDashboardButton = document.getElementById("refresh-dashboard-button");
   var layoutLightbox = document.getElementById("layout-lightbox");
   var layoutLightboxImage = document.getElementById("layout-lightbox-image");
   var layoutLightboxClose = document.getElementById("layout-lightbox-close");
@@ -55,6 +52,7 @@
   var pendingAuthEmail = "";
   var pendingAuthPurpose = "signup";
   var pendingResetEmail = "";
+  var cancelFeePercent = "4%";
 
   if (!form || !apiBase) {
     return;
@@ -116,9 +114,10 @@
     authStatus.className = "form-status" + (type ? " is-" + type : "");
   }
 
-  function setDashboardMessage(message, type) {
-    dashboardStatus.textContent = message || "";
-    dashboardStatus.className = "form-status" + (type ? " is-" + type : "");
+  function updateCancelFeeText() {
+    document.querySelectorAll("[data-cancel-fee]").forEach(function (item) {
+      item.textContent = cancelFeePercent;
+    });
   }
 
   function openLayoutLightbox(link) {
@@ -279,11 +278,8 @@
       authEmailInput.value = authSession.email;
       applyAuthProfileToForm();
       setAuthMessage("You are signed in. You can place ads and view your dashboard.", "success");
-      loadDashboard();
     } else {
       form.elements.email.readOnly = false;
-      setDashboardMessage("Use the profile button at the top right to sign in and see your ad dashboard.", "");
-      dashboardList.innerHTML = "";
     }
     updateActionButtons();
   }
@@ -334,7 +330,7 @@
       return;
     }
     if (slot.kind === "fixed") {
-      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot. You are charged only after successful reservation.";
+      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot. You are charged when the ad is accepted and the spot is reserved.";
       return;
     }
     bidField.classList.remove("hidden");
@@ -342,7 +338,7 @@
     bidAmount.min = slot.min_bid;
     bidAmount.placeholder = "At least " + money(slot.min_bid);
     var current = slot.highest_bid ? " Current highest bid: " + money(slot.highest_bid) + "." : "";
-    slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " Bidding closes five minutes before the scheduled send.";
+    slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " No hold is placed for bids. Bidding closes five minutes before the scheduled send.";
   }
 
   function loadSlots() {
@@ -351,6 +347,8 @@
     return requestJson("/ads/api/slots?date=" + encodeURIComponent(requestedDate), { method: "GET" })
       .then(function (payload) {
         markServerAvailable();
+        cancelFeePercent = payload.cancel_fee_percent || cancelFeePercent;
+        updateCancelFeeText();
         slots = payload.slots || [];
         slotSelect.innerHTML = '<option value="">Choose a placement</option>';
         slots.forEach(function (slot) {
@@ -479,191 +477,6 @@
     if (stripeState) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
     }
-  }
-
-  function statusText(ad) {
-    var statusNames = {
-      pending_approval: "Pending",
-      active_bid: "Actively bidding",
-      approved_paid: "Paid",
-      paid: "Paid and scheduled",
-      won: "Winning bid selected",
-      charged: "Winning bid charged and scheduled",
-      sent: "Ad sent",
-      rejected: "Not accepted",
-      lost: "Bid did not win",
-      payment_failed: "Payment failed",
-      sold_out: "That fixed spot was already filled",
-      reservation_failed: "Reservation could not be completed",
-      hold_failed: "The temporary payment authorization failed"
-    };
-    var message = (statusNames[ad.status] || ad.status || "Status unavailable") + ". Placement: " + ad.slot + ".";
-    if (ad.kind === "bid") {
-      message += " Your bid: " + money(ad.bid_amount) + ". Current highest bid: " + money(ad.highest_bid) + ".";
-      if (ad.rank) {
-        message += " Current position: " + ad.rank + ".";
-      }
-    }
-    return message;
-  }
-
-  function displayDate(value) {
-    if (!value) {
-      return "";
-    }
-    var parts = String(value).split("-").map(Number);
-    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-      return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-      });
-    }
-    return String(value);
-  }
-
-  function displayHour(value) {
-    var hour = Number(value);
-    if (!hour) {
-      return "";
-    }
-    var suffix = hour >= 12 ? "PM" : "AM";
-    var normalHour = hour % 12 || 12;
-    return normalHour + " " + suffix + " ET";
-  }
-
-  function addDashboardDetail(container, labelText, valueText) {
-    if (!valueText) {
-      return;
-    }
-    var item = document.createElement("div");
-    item.className = "dashboard-detail";
-    var label = document.createElement("span");
-    label.textContent = labelText;
-    var value = document.createElement("strong");
-    value.textContent = valueText;
-    item.appendChild(label);
-    item.appendChild(value);
-    container.appendChild(item);
-  }
-
-  function renderDashboard(ads) {
-    dashboardList.innerHTML = "";
-    if (!ads || !ads.length) {
-      setDashboardMessage("You do not have any website ad requests yet.", "");
-      return;
-    }
-    setDashboardMessage("Showing " + ads.length + " ad request(s) for " + authSession.email + ".", "success");
-    ads.forEach(function (ad) {
-      var card = document.createElement("article");
-      card.className = "dashboard-card";
-
-      var title = document.createElement("h3");
-      title.textContent = (ad.business_name || "Ad request") + " - " + (ad.ad_id || "");
-      card.appendChild(title);
-
-      var meta = document.createElement("p");
-      meta.className = "dashboard-meta";
-      meta.textContent = (ad.kind === "bid" ? "Bidding ad" : "Fixed-price ad") + " | " + (ad.created_at || "created time unavailable");
-      card.appendChild(meta);
-
-      var status = document.createElement("p");
-      status.textContent = statusText(ad);
-      card.appendChild(status);
-
-      var details = document.createElement("div");
-      details.className = "dashboard-details";
-      addDashboardDetail(details, "Request ID", ad.ad_id || "");
-      addDashboardDetail(details, "Date", displayDate(ad.slot_date));
-      addDashboardDetail(details, "Send time", displayHour(ad.hour));
-      addDashboardDetail(details, "Placement", ad.slot || "");
-      addDashboardDetail(details, "Spots in layout", ad.boxes ? String(ad.boxes) : "");
-      addDashboardDetail(details, "Contact name", ad.advertiser_name || "");
-      addDashboardDetail(details, "Contact email", ad.email || "");
-      addDashboardDetail(details, "Contact phone", ad.phone || "");
-      addDashboardDetail(details, "Ad type", ad.creative_type || "");
-      addDashboardDetail(details, "Fixed price", ad.kind === "fixed" ? money(ad.price) : "");
-      addDashboardDetail(details, "Your bid", ad.kind === "bid" ? money(ad.bid_amount) : "");
-      addDashboardDetail(details, "Highest bid", ad.kind === "bid" ? money(ad.highest_bid) : "");
-      addDashboardDetail(details, "Bid position", ad.kind === "bid" && ad.rank ? String(ad.rank) : "");
-      card.appendChild(details);
-
-      if (ad.preview_url) {
-        var image = document.createElement("img");
-        image.className = "dashboard-preview";
-        image.src = ad.preview_url;
-        image.alt = "Ad preview for " + (ad.business_name || ad.ad_id || "request");
-        card.appendChild(image);
-      }
-
-      if (ad.can_increase_bid) {
-        var formEl = document.createElement("form");
-        formEl.className = "raise-form dashboard-raise-form";
-        var label = document.createElement("label");
-        label.className = "field";
-        label.textContent = "Increase your bid to";
-        var input = document.createElement("input");
-        input.type = "number";
-        input.min = String(Number(ad.bid_amount || 0) + 0.01);
-        input.step = "0.01";
-        input.required = true;
-        label.appendChild(input);
-        var button = document.createElement("button");
-        button.className = "button";
-        button.type = "submit";
-        button.textContent = "Increase bid";
-        formEl.appendChild(label);
-        formEl.appendChild(button);
-        formEl.addEventListener("submit", function (event) {
-          event.preventDefault();
-          requestJson("/ads/api/increase-bid", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_token: authSession.session_token,
-              ad_id: ad.ad_id,
-              amount: input.value
-            })
-          }).then(function () {
-            setDashboardMessage("Bid updated.", "success");
-            loadDashboard();
-          }).catch(function (error) {
-            setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
-          });
-        });
-        card.appendChild(formEl);
-      }
-
-      dashboardList.appendChild(card);
-    });
-  }
-
-  function loadDashboard() {
-    if (!isSignedIn()) {
-      setDashboardMessage("Use the profile button at the top right to sign in and see your ad dashboard.", "");
-      dashboardList.innerHTML = "";
-      return Promise.resolve();
-    }
-    setDashboardMessage("Loading your dashboard...", "");
-    return requestJson("/ads/api/dashboard", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_token: authSession.session_token })
-    }).then(function (payload) {
-      if (payload.profile && authSession) {
-        authSession.profile = payload.profile;
-        localStorage.setItem(authKey, JSON.stringify(authSession));
-        applyAuthProfileToForm();
-        updateActionButtons();
-      }
-      renderDashboard(payload.ads || []);
-    }).catch(function (error) {
-      if (/sign in/i.test(error.message)) {
-        saveAuthSession(null);
-      }
-      setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
-    });
   }
 
   loginForm.addEventListener("submit", function (event) {
@@ -835,6 +648,11 @@
     setAuthMessage("You are signed out.", "");
   });
 
+  function reloadAuthSessionFromStorage() {
+    authSession = loadAuthSession();
+    updateAuthUi();
+  }
+
   stripeButton.addEventListener("click", function () {
     if (!serverAvailable) {
       markServerUnavailable();
@@ -905,9 +723,10 @@
       .then(function (payload) {
         sessionStorage.removeItem(stripeSessionKey);
         sessionStorage.removeItem(draftKey);
-        setMessage("Your ad request was sent. Request ID: " + payload.ad_id + ". You can see it in your dashboard below.", "success");
-        loadDashboard();
-        document.getElementById("ad-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
+        setMessage("Your ad request was sent. Request ID: " + payload.ad_id + ". Opening your dashboard...", "success");
+        setTimeout(function () {
+          window.location.href = "/dashboard/";
+        }, 1200);
       })
       .catch(function (error) {
         if (error.message === unavailableMessage) {
@@ -919,7 +738,6 @@
       });
   });
 
-  refreshDashboardButton.addEventListener("click", loadDashboard);
   document.querySelectorAll(".layout-preview-link").forEach(function (link) {
     link.addEventListener("click", function (event) {
       event.preventDefault();
@@ -951,6 +769,8 @@
   });
   adTypeChanged();
   retryServerButton.addEventListener("click", loadSlots);
+  window.addEventListener("storage", reloadAuthSessionFromStorage);
+  window.addEventListener("hakolAdsAuthChanged", reloadAuthSessionFromStorage);
   restoreDraft().then(function () {
     if (!sessionStorage.getItem(draftKey)) {
       loadSlots();

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Advertiser Dashboard | Hakol Kaan</title>
+  <meta name="description" content="Sign in to view your Hakol Kaan advertiser profile, ad placements, bids, payments, and cancellation options.">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/site.js" defer></script>
+  <script src="/assets/dashboard.js" defer></script>
+</head>
+<body class="dashboard-page" data-ads-api-base="https://sms.hakolkaan.com">
+  <header class="site-header">
+    <a class="brand" href="/"><span class="brand-mark">HK</span><span>Hakol Kaan</span></a>
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-feature" href="/ads/">Place ad</a>
+      <a class="account-link" data-account-link href="/ads/#ad-account">Sign in</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="page-title">
+      <p class="kicker">Advertiser dashboard</p>
+      <h1>Your ads and profile.</h1>
+      <p class="lead">Sign in to see your ad requests, active bids, payment status, cancellation options, and advertiser details.</p>
+    </section>
+
+    <section class="section dashboard-signin-panel" id="dashboard-signin">
+      <div class="panel">
+        <h2>Sign in required.</h2>
+        <p>Use your advertiser account to view your dashboard. If you are not signed in yet, open the ad page and use the profile button at the top right.</p>
+        <a class="button" href="/ads/#ad-account">Sign in</a>
+      </div>
+    </section>
+
+    <section class="section hidden" id="profile">
+      <div class="section-heading">
+        <p class="kicker">Profile</p>
+        <h2>Your advertiser details.</h2>
+      </div>
+      <div class="dashboard-panel">
+        <div class="dashboard-details" id="profile-details"></div>
+        <div class="button-row">
+          <a class="button secondary" href="/ads/#book-ad">Place another ad</a>
+          <button class="button secondary" id="dashboard-sign-out" type="button">Sign out</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section hidden" id="ad-dashboard">
+      <div class="section-heading">
+        <p class="kicker">Ads</p>
+        <h2>Manage your placements.</h2>
+        <p>Fixed ads are charged when accepted. Bids are charged only if they win. Paid ads can be canceled before they run, but the cancellation fee is <span data-cancel-fee>4%</span> of the ad price.</p>
+      </div>
+      <div class="dashboard-panel">
+        <div class="button-row">
+          <button class="button secondary" id="refresh-dashboard-button" type="button">Refresh dashboard</button>
+        </div>
+        <p class="form-status" id="dashboard-status" role="status" aria-live="polite">Loading dashboard...</p>
+        <div class="dashboard-list" id="dashboard-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>Hakol Kaan advertiser dashboard</span>
+      <nav aria-label="Footer navigation">
+        <a href="/">Home</a>
+        <a href="/ads/">Place ad</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/collateral/">Collateral</a>
+        <a href="/about/">About</a>
+        <a href="/contact/">Contact</a>
+        <a href="/terms/">Terms</a>
+        <a href="/privacy/">Privacy</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

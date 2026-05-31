@@ -53,6 +53,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  margin-right: auto;
   color: var(--ink);
   font-weight: 800;
   text-decoration: none;
@@ -412,6 +413,113 @@ h3 {
 .account-link.is-signed-in {
   background: rgba(231, 170, 47, 0.18);
   border-color: rgba(231, 170, 47, 0.38);
+}
+
+.site-menu-button {
+  display: inline-grid;
+  gap: 0.22rem;
+  width: 2.3rem;
+  height: 2.3rem;
+  place-content: center;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 92, 69, 0.08);
+}
+
+.site-menu-button span {
+  display: block;
+  width: 1.1rem;
+  height: 0.13rem;
+  background: var(--green-2);
+  border-radius: 999px;
+}
+
+.site-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.site-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 35, 31, 0.48);
+  border: 0;
+  cursor: pointer;
+}
+
+.site-drawer-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  width: min(24rem, calc(100% - 3rem));
+  min-height: 100%;
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at top left, rgba(231, 170, 47, 0.18), transparent 16rem),
+    #fbf6ea;
+  border-right: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.site-drawer-close {
+  justify-self: end;
+  padding: 0.35rem 0.7rem;
+  color: var(--green);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.site-drawer-account {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.site-drawer-account span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.site-drawer-nav {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.site-drawer-nav a {
+  padding: 0.78rem 0.9rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid transparent;
+  border-radius: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.site-drawer-nav a:hover {
+  color: var(--green);
+  border-color: var(--line);
+}
+
+.drawer-sign-out {
+  margin-top: 0.4rem;
+}
+
+body.is-site-drawer-open {
+  overflow: hidden;
 }
 
 .ads-hero {
@@ -1035,6 +1143,13 @@ body.is-account-modal-open {
 
 .dashboard-raise-form {
   padding-top: 0.5rem;
+}
+
+.dashboard-actions {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+  padding-top: 0.35rem;
 }
 
 .honeypot {
