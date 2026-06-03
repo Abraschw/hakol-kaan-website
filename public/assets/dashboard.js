@@ -4,6 +4,7 @@
   var body = document.body;
   var apiBase = (body.dataset.adsApiBase || "").replace(/\/$/, "");
   var authKey = "hakol_kaan_ads_auth";
+  var dashboardLead = document.getElementById("dashboard-lead");
   var signinPanel = document.getElementById("dashboard-signin");
   var profileSection = document.getElementById("profile");
   var dashboardSection = document.getElementById("ad-dashboard");
@@ -62,6 +63,11 @@
 
   function updateVisibility() {
     var signedIn = isSignedIn();
+    if (dashboardLead) {
+      dashboardLead.textContent = signedIn
+        ? "Here you can see your ad requests, active bids, payment status, cancellation options, and advertiser details."
+        : "Sign in to see your ad requests, active bids, payment status, cancellation options, and advertiser details.";
+    }
     signinPanel.classList.toggle("hidden", signedIn);
     profileSection.classList.toggle("hidden", !signedIn);
     dashboardSection.classList.toggle("hidden", !signedIn);
