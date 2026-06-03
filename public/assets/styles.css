@@ -1013,6 +1013,18 @@ button.button:disabled {
   content: "";
 }
 
+.preview-text-actions {
+  margin-top: 0.9rem;
+}
+
+.preview-text-actions .button {
+  width: 100%;
+}
+
+.preview-text-status {
+  margin-top: 0.7rem;
+}
+
 .auth-card,
 .dashboard-panel,
 .signed-out-note {

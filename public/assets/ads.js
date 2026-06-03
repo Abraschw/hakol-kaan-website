@@ -20,6 +20,8 @@
   var retryServerButton = document.getElementById("retry-server-button");
   var adPreviewGrid = document.getElementById("ad-preview-grid");
   var adPreviewNote = document.getElementById("ad-preview-note");
+  var previewTextButton = document.getElementById("send-preview-text-button");
+  var previewTextStatus = document.getElementById("preview-text-status");
   var loginForm = document.getElementById("ad-login-form");
   var signupForm = document.getElementById("ad-signup-form");
   var otpForm = document.getElementById("ad-otp-form");
@@ -274,6 +276,36 @@
         ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
         : "No payment method is set up yet. Set up payment before submitting your ad.";
     }
+    updatePreviewTextButton();
+  }
+
+  function setPreviewTextStatus(message, type) {
+    if (!previewTextStatus) {
+      return;
+    }
+    previewTextStatus.textContent = message || "";
+    previewTextStatus.className = "form-status preview-text-status" + (type ? " is-" + type : "");
+  }
+
+  function previewCreativeReady() {
+    if (selectedAdType() === "text") {
+      return Boolean(textInput && textInput.value.trim());
+    }
+    return Boolean(imageInput && imageInput.files && imageInput.files[0]);
+  }
+
+  function updatePreviewTextButton() {
+    if (!previewTextButton) {
+      return;
+    }
+    previewTextButton.disabled = (
+      !serverAvailable ||
+      !isSignedIn() ||
+      !accountDetailsReady() ||
+      !selectedSlot() ||
+      slotBlockedByDate(selectedSlot()) ||
+      !previewCreativeReady()
+    );
   }
 
   function updateAuthUi() {
@@ -466,6 +498,7 @@
         adPreviewNote.textContent = "Upload your picture to see it inside this layout.";
       }
     }
+    updatePreviewTextButton();
   }
 
   function drawSlotSummary() {
@@ -845,6 +878,58 @@
         }
       });
   });
+
+  if (previewTextButton) {
+    previewTextButton.addEventListener("click", function () {
+      if (!serverAvailable) {
+        markServerUnavailable();
+        return;
+      }
+      if (!isSignedIn()) {
+        setPreviewTextStatus("Sign in before requesting a preview text.", "error");
+        openAccountModal("login");
+        return;
+      }
+      if (!accountDetailsReady()) {
+        setPreviewTextStatus(accountDetailsMissingMessage(), "error");
+        refreshAuthProfile();
+        return;
+      }
+      if (!selectedSlot()) {
+        setPreviewTextStatus("Choose an ad placement first.", "error");
+        return;
+      }
+      if (slotBlockedByDate(selectedSlot())) {
+        setPreviewTextStatus(dateRuleMessage(selectedSlot()), "error");
+        return;
+      }
+      if (!previewCreativeReady()) {
+        setPreviewTextStatus(selectedAdType() === "text" ? "Enter your ad text first." : "Upload your ad picture first.", "error");
+        return;
+      }
+      var data = new FormData(form);
+      data.append("session_token", authSession.session_token);
+      previewTextButton.disabled = true;
+      setPreviewTextStatus("Sending your preview text...", "");
+      requestJson("/ads/api/preview-text", { method: "POST", body: data })
+        .then(function (payload) {
+          var remaining = Number(payload.remaining);
+          var remainingText = Number.isFinite(remaining)
+            ? " You have " + remaining + " preview text" + (remaining === 1 ? "" : "s") + " left today."
+            : "";
+          setPreviewTextStatus("Preview text sent to your phone." + remainingText, "success");
+          updatePreviewTextButton();
+        })
+        .catch(function (error) {
+          if (error.message === unavailableMessage) {
+            markServerUnavailable();
+          } else {
+            setPreviewTextStatus(error.message, "error");
+            updatePreviewTextButton();
+          }
+        });
+    });
+  }
 
   document.querySelectorAll(".layout-preview-link").forEach(function (link) {
     link.addEventListener("click", function (event) {
