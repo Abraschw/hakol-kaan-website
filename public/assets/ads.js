@@ -233,20 +233,30 @@
 
   function applyAuthProfileToForm() {
     if (!isSignedIn()) {
-      form.elements.email.readOnly = false;
       return;
     }
     var profile = authProfile || {};
     if (profile.email) {
       form.elements.email.value = profile.email;
-      form.elements.email.readOnly = true;
     }
-    if (profile.full_name && !form.elements.advertiser_name.value) {
+    if (profile.full_name) {
       form.elements.advertiser_name.value = profile.full_name;
     }
-    if (profile.phone && !form.elements.phone.value) {
+    if (profile.phone) {
       form.elements.phone.value = profile.phone;
     }
+  }
+
+  function accountDetailsReady() {
+    applyAuthProfileToForm();
+    return Boolean(form.elements.advertiser_name.value && form.elements.email.value && form.elements.phone.value);
+  }
+
+  function accountDetailsMissingMessage() {
+    if (!authProfile) {
+      return "Your account details are still loading. Please try again in a moment.";
+    }
+    return "Your signed-in account is missing required contact information. Please contact Hakol Kaan to update it.";
   }
 
   function updateActionButtons() {
@@ -285,8 +295,6 @@
       if (!authProfile) {
         refreshAuthProfile();
       }
-    } else {
-      form.elements.email.readOnly = false;
     }
     updateActionButtons();
   }
@@ -425,7 +433,9 @@
     if (stripeState === "success" && sessionId) {
       updateActionButtons();
       setMessage("Confirming your payment setup...", "");
-      requestJson("/ads/api/card-setup/confirm", {
+      refreshAuthProfile().then(function () {
+        applyAuthProfileToForm();
+        return requestJson("/ads/api/card-setup/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -436,6 +446,7 @@
           phone: form.elements.phone.value,
           website: form.elements.website.value
         })
+        });
       }).then(function (payload) {
         if (payload.profile && authSession) {
           authProfile = payload.profile;
@@ -645,8 +656,9 @@
       openAccountModal("login");
       return;
     }
-    if (!form.elements.advertiser_name.value || !form.elements.email.value || !form.elements.phone.value) {
-      setMessage("Enter your name, email, and mobile number before setting up payment.", "error");
+    if (!accountDetailsReady()) {
+      setMessage(accountDetailsMissingMessage(), "error");
+      refreshAuthProfile();
       return;
     }
     stripeButton.disabled = true;
@@ -687,6 +699,11 @@
     }
     if (!savedCard()) {
       setMessage("Set up payment before submitting the ad.", "error");
+      return;
+    }
+    if (!accountDetailsReady()) {
+      setMessage(accountDetailsMissingMessage(), "error");
+      refreshAuthProfile();
       return;
     }
     if (slotBlockedByDate(selectedSlot())) {

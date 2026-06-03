@@ -225,24 +225,13 @@
             </label>
           </div>
 
-          <div class="form-step">
-            <p class="form-step-label">2. Advertiser details</p>
-            <div class="field-grid two-fields">
-              <label class="field">Your name
-                <input name="advertiser_name" type="text" maxlength="100" required>
-              </label>
-              <label class="field">Email
-                <input name="email" type="email" maxlength="150" required>
-              </label>
-              <label class="field">Mobile number
-                <input name="phone" type="tel" maxlength="25" placeholder="(929) 555-1234" required>
-              </label>
-            </div>
-            <label class="honeypot" aria-hidden="true">Leave this blank<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
-          </div>
+          <input name="advertiser_name" type="hidden">
+          <input name="email" type="hidden">
+          <input name="phone" type="hidden">
+          <label class="honeypot" aria-hidden="true">Leave this blank<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
 
           <div class="form-step">
-            <p class="form-step-label">3. Ad</p>
+            <p class="form-step-label">2. Ad</p>
             <fieldset class="ad-type-toggle">
               <legend>What do you want to advertise?</legend>
               <label><input type="radio" name="creative_type" value="picture" checked> A picture</label>
@@ -258,7 +247,7 @@
           </div>
 
           <div class="form-step payment-step">
-            <p class="form-step-label">4. Payment and updates</p>
+            <p class="form-step-label">3. Payment and updates</p>
             <p>Payment setup opens in a secure checkout window. Returning from checkout does not charge you.</p>
             <p class="saved-card-status" id="saved-card-status">No payment method is set up yet.</p>
             <p class="fine-print">Before pressing submit, please note that your ad goes through Hakol Kaan review before it can run. Fixed ads are charged when accepted. Bids are charged only if they win. If you cancel after payment, the cancellation fee is <span data-cancel-fee>4%</span> of the ad price.</p>
