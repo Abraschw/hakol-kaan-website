@@ -244,9 +244,6 @@
     if (profile.full_name && !form.elements.advertiser_name.value) {
       form.elements.advertiser_name.value = profile.full_name;
     }
-    if (form.elements.business_name && profile.business_name && !form.elements.business_name.value) {
-      form.elements.business_name.value = profile.business_name;
-    }
     if (profile.phone && !form.elements.phone.value) {
       form.elements.phone.value = profile.phone;
     }
@@ -435,7 +432,7 @@
           session_token: authSession && authSession.session_token,
           stripe_session_id: sessionId,
           advertiser_name: form.elements.advertiser_name.value,
-          business_name: form.elements.business_name ? form.elements.business_name.value : "",
+          business_name: "",
           phone: form.elements.phone.value,
           website: form.elements.website.value
         })
@@ -660,7 +657,7 @@
       body: JSON.stringify({
         session_token: authSession.session_token,
         advertiser_name: form.elements.advertiser_name.value,
-        business_name: form.elements.business_name ? form.elements.business_name.value : "",
+        business_name: "",
         email: form.elements.email.value,
         phone: form.elements.phone.value,
         website: form.elements.website.value
