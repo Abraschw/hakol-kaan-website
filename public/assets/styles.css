@@ -979,10 +979,15 @@ button.button:disabled {
   white-space: nowrap;
 }
 
+.ad-preview-cell.has-image {
+  padding: 0;
+}
+
 .ad-preview-cell img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  display: block;
 }
 
 .ad-preview-text {

@@ -426,6 +426,7 @@
       return false;
     }
     var image = document.createElement("img");
+    cell.classList.add("has-image");
     image.src = previewImageUrl;
     image.alt = "Your ad preview";
     cell.appendChild(image);
