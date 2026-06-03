@@ -264,17 +264,13 @@
           </div>
         </form>
 
-        <aside class="booking-note">
-          <h3>What happens next?</h3>
-          <ol>
-            <li>Set up payment.</li>
-            <li>Submit your picture or text ad.</li>
-            <li>For a fixed-price ad, your payment method is charged when the ad is accepted and placement is available.</li>
-            <li>For a bidding ad, no hold is placed. Your payment method is charged only if your bid wins.</li>
-            <li>If your bid wins, your payment method is charged five minutes before the scheduled send.</li>
-            <li>Open your dashboard to see all your ads, cancel eligible ads, and increase active bids.</li>
-          </ol>
-          <p class="fine-print">Questions before advertising? Email <a href="mailto:support@hakolkaan.com">support@hakolkaan.com</a>.</p>
+        <aside class="booking-note live-ad-preview" aria-live="polite">
+          <p class="form-step-label">Live preview</p>
+          <h3>See how your ad would look.</h3>
+          <div class="ad-preview-stage" id="ad-preview-stage">
+            <div class="ad-preview-grid" id="ad-preview-grid" data-spots="1"></div>
+          </div>
+          <p class="fine-print" id="ad-preview-note">Choose a placement and upload a picture or enter text to preview your ad.</p>
         </aside>
       </div>
     </section>

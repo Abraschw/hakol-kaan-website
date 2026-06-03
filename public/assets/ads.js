@@ -12,10 +12,14 @@
   var bidAmount = document.getElementById("bid-amount");
   var imageField = document.getElementById("ad-image-field");
   var textField = document.getElementById("ad-text-field");
+  var imageInput = imageField ? imageField.querySelector("input") : null;
+  var textInput = textField ? textField.querySelector("textarea") : null;
   var stripeButton = document.getElementById("stripe-button");
   var submitButton = document.getElementById("submit-ad-button");
   var savedCardStatus = document.getElementById("saved-card-status");
   var retryServerButton = document.getElementById("retry-server-button");
+  var adPreviewGrid = document.getElementById("ad-preview-grid");
+  var adPreviewNote = document.getElementById("ad-preview-note");
   var loginForm = document.getElementById("ad-login-form");
   var signupForm = document.getElementById("ad-signup-form");
   var otpForm = document.getElementById("ad-otp-form");
@@ -52,6 +56,7 @@
   var pendingAuthPurpose = "signup";
   var pendingResetEmail = "";
   var cancelFeePercent = "4%";
+  var previewImageUrl = "";
 
   if (!form || !apiBase) {
     return;
@@ -357,20 +362,128 @@
     return slots.find(function (slot) { return Number(slot.hour) === value; }) || null;
   }
 
+  function previewGridForCount(count) {
+    var boxes = Number(count || 1);
+    if (boxes <= 1) {
+      return { columns: 1, rows: 1 };
+    }
+    if (boxes === 2) {
+      return { columns: 2, rows: 1 };
+    }
+    if (boxes === 4) {
+      return { columns: 2, rows: 2 };
+    }
+    if (boxes === 6) {
+      return { columns: 3, rows: 2 };
+    }
+    if (boxes === 8) {
+      return { columns: 4, rows: 2 };
+    }
+    if (boxes === 12) {
+      return { columns: 4, rows: 3 };
+    }
+    return { columns: 4, rows: 4 };
+  }
+
+  function selectedAdType() {
+    var selected = form.querySelector('input[name="creative_type"]:checked');
+    return selected ? selected.value : "picture";
+  }
+
+  function textPreviewSize(text, boxes) {
+    var length = String(text || "").trim().length;
+    var base = boxes <= 1 ? 2.2 : boxes <= 4 ? 1.35 : boxes <= 8 ? 1.0 : 0.72;
+    if (length > 120) {
+      base *= 0.55;
+    } else if (length > 70) {
+      base *= 0.68;
+    } else if (length > 35) {
+      base *= 0.82;
+    }
+    return Math.max(0.48, base).toFixed(2) + "rem";
+  }
+
+  function renderPreviewCreative(cell, boxes) {
+    var type = selectedAdType();
+    if (type === "text") {
+      var text = textInput ? textInput.value.trim() : "";
+      if (!text) {
+        cell.classList.add("is-placeholder");
+        cell.textContent = "Type your ad text";
+        return false;
+      }
+      var textWrap = document.createElement("div");
+      textWrap.className = "ad-preview-text";
+      textWrap.textContent = text;
+      textWrap.dir = "auto";
+      textWrap.style.fontSize = textPreviewSize(text, boxes);
+      cell.appendChild(textWrap);
+      return true;
+    }
+    if (!previewImageUrl) {
+      cell.classList.add("is-placeholder");
+      cell.textContent = "Upload your ad picture";
+      return false;
+    }
+    var image = document.createElement("img");
+    image.src = previewImageUrl;
+    image.alt = "Your ad preview";
+    cell.appendChild(image);
+    return true;
+  }
+
+  function updateAdPreview() {
+    if (!adPreviewGrid) {
+      return;
+    }
+    var slot = selectedSlot();
+    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
+    var layout = previewGridForCount(boxes);
+    var hasCreative = false;
+    adPreviewGrid.innerHTML = "";
+    adPreviewGrid.dataset.spots = String(boxes);
+    adPreviewGrid.style.gridTemplateColumns = "repeat(" + layout.columns + ", minmax(0, 1fr))";
+    for (var index = 0; index < boxes; index += 1) {
+      var cell = document.createElement("div");
+      cell.className = "ad-preview-cell";
+      if (index === 0) {
+        hasCreative = renderPreviewCreative(cell, boxes);
+      } else {
+        cell.classList.add("is-other-ad");
+        cell.textContent = "Other ad";
+      }
+      adPreviewGrid.appendChild(cell);
+    }
+    if (adPreviewNote) {
+      if (!slot) {
+        adPreviewNote.textContent = "Choose a placement to see the full ad layout.";
+      } else if (hasCreative) {
+        adPreviewNote.textContent = "This preview shows your ad in the selected " + boxes + " spot layout.";
+      } else if (selectedAdType() === "text") {
+        adPreviewNote.textContent = "Type your ad text to see it inside this layout.";
+      } else {
+        adPreviewNote.textContent = "Upload your picture to see it inside this layout.";
+      }
+    }
+  }
+
   function drawSlotSummary() {
     var slot = selectedSlot();
     bidField.classList.add("hidden");
     bidAmount.required = false;
     if (!slot) {
       slotSummary.textContent = dateRuleMessage(null) || "Select a time to see availability and payment details.";
+      updateAdPreview();
       return;
     }
     if (slotBlockedByDate(slot)) {
       slotSummary.textContent = dateRuleMessage(slot);
+      updateAdPreview();
       return;
     }
     if (slot.kind === "fixed") {
       slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot.";
+      updateAdPreview();
       return;
     }
     bidField.classList.remove("hidden");
@@ -379,6 +492,7 @@
     bidAmount.placeholder = "At least " + money(slot.min_bid);
     var current = slot.highest_bid ? " Current highest bid: " + money(slot.highest_bid) + "." : "";
     slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " No hold is placed for bids. Bidding closes five minutes before the scheduled send.";
+    updateAdPreview();
   }
 
   function loadSlots() {
@@ -418,12 +532,12 @@
   }
 
   function adTypeChanged() {
-    var selected = form.querySelector('input[name="creative_type"]:checked');
-    var isText = selected && selected.value === "text";
+    var isText = selectedAdType() === "text";
     imageField.classList.toggle("hidden", isText);
     textField.classList.toggle("hidden", !isText);
-    imageField.querySelector("input").required = !isText;
-    textField.querySelector("textarea").required = isText;
+    imageInput.required = !isText;
+    textInput.required = isText;
+    updateAdPreview();
   }
 
   function cardSetupReturn() {
@@ -762,6 +876,22 @@
   });
   adTypeChanged();
   retryServerButton.addEventListener("click", loadSlots);
+  if (imageInput) {
+    imageInput.addEventListener("change", function () {
+      if (previewImageUrl) {
+        URL.revokeObjectURL(previewImageUrl);
+        previewImageUrl = "";
+      }
+      var file = imageInput.files && imageInput.files[0];
+      if (file) {
+        previewImageUrl = URL.createObjectURL(file);
+      }
+      updateAdPreview();
+    });
+  }
+  if (textInput) {
+    textInput.addEventListener("input", updateAdPreview);
+  }
   window.addEventListener("storage", reloadAuthSessionFromStorage);
   window.addEventListener("hakolAdsAuthChanged", reloadAuthSessionFromStorage);
   loadSlots().then(function () {

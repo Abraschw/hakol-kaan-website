@@ -930,6 +930,82 @@ button.button:disabled {
   color: var(--muted);
 }
 
+.live-ad-preview h3 {
+  margin-bottom: 0.65rem;
+}
+
+.ad-preview-stage {
+  padding: 0.75rem;
+  background: linear-gradient(145deg, #fbf7ea, #eef7f2);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.ad-preview-grid {
+  display: grid;
+  gap: clamp(0.25rem, 1.1vw, 0.48rem);
+  align-items: stretch;
+}
+
+.ad-preview-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 4;
+  min-width: 0;
+  padding: clamp(0.25rem, 1vw, 0.6rem);
+  overflow: hidden;
+  color: var(--green-2);
+  text-align: center;
+  background: #fff;
+  border: 2px solid rgba(18, 47, 40, 0.85);
+  border-radius: clamp(0.35rem, 1vw, 0.8rem);
+  font-size: clamp(0.48rem, 1.2vw, 0.85rem);
+  font-weight: 800;
+}
+
+.ad-preview-cell::before {
+  content: "Sponsored ad";
+  position: absolute;
+  top: 0.32rem;
+  left: 50%;
+  color: rgba(18, 47, 40, 0.45);
+  font-size: clamp(0.28rem, 0.6vw, 0.48rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.ad-preview-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ad-preview-text {
+  width: 100%;
+  max-height: 100%;
+  padding: 0.45rem;
+  overflow-wrap: anywhere;
+  line-height: 1.12;
+  white-space: pre-wrap;
+}
+
+.ad-preview-cell.is-placeholder,
+.ad-preview-cell.is-other-ad {
+  color: rgba(18, 47, 40, 0.55);
+  background: rgba(255, 255, 255, 0.68);
+  border-style: dashed;
+}
+
+.ad-preview-cell.is-other-ad::before,
+.ad-preview-cell.is-placeholder::before {
+  content: "";
+}
+
 .auth-card,
 .dashboard-panel,
 .signed-out-note {
