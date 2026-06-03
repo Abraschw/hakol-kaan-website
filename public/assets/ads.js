@@ -365,7 +365,7 @@
       return;
     }
     if (slot.kind === "fixed") {
-      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot. You are charged when the ad is accepted and the spot is reserved.";
+      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot.";
       return;
     }
     bidField.classList.remove("hidden");
