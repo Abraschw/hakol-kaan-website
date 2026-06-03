@@ -981,6 +981,8 @@ button.button:disabled {
 
 .ad-preview-cell.has-image {
   padding: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .ad-preview-cell img {
