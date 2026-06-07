@@ -17,6 +17,7 @@
   var stripeButton = document.getElementById("stripe-button");
   var submitButton = document.getElementById("submit-ad-button");
   var savedCardStatus = document.getElementById("saved-card-status");
+  var paymentSetupNote = document.getElementById("payment-setup-note");
   var retryServerButton = document.getElementById("retry-server-button");
   var adPreviewGrid = document.getElementById("ad-preview-grid");
   var adPreviewNote = document.getElementById("ad-preview-note");
@@ -273,6 +274,9 @@
     stripeButton.disabled = !serverAvailable || !isSignedIn();
     stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment";
     submitButton.disabled = !serverAvailable || !isSignedIn() || !canUseSavedCard;
+    if (paymentSetupNote) {
+      paymentSetupNote.classList.toggle("hidden", canUseSavedCard);
+    }
     if (savedCardStatus) {
       savedCardStatus.textContent = canUseSavedCard
         ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
