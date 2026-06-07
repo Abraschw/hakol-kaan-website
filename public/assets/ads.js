@@ -20,6 +20,7 @@
   var retryServerButton = document.getElementById("retry-server-button");
   var adPreviewGrid = document.getElementById("ad-preview-grid");
   var adPreviewNote = document.getElementById("ad-preview-note");
+  var spotInput = document.getElementById("ad-spot-number");
   var previewTextButton = document.getElementById("send-preview-text-button");
   var previewTextStatus = document.getElementById("preview-text-status");
   var loginForm = document.getElementById("ad-login-form");
@@ -59,6 +60,7 @@
   var pendingResetEmail = "";
   var cancelFeePercent = "4%";
   var previewImageUrl = "";
+  var selectedSpotNumber = 1;
 
   if (!form || !apiBase) {
     return;
@@ -394,6 +396,55 @@
     return slots.find(function (slot) { return Number(slot.hour) === value; }) || null;
   }
 
+  function claimedSpots(slot) {
+    return new Set((slot && Array.isArray(slot.claimed_spots) ? slot.claimed_spots : []).map(function (value) {
+      return Number(value || 0);
+    }).filter(function (value) {
+      return value > 0;
+    }));
+  }
+
+  function spotIsBooked(slot, spotNumber) {
+    return Boolean(slot && slot.kind === "fixed" && claimedSpots(slot).has(Number(spotNumber || 0)));
+  }
+
+  function firstAvailableSpot(slot, boxes) {
+    for (var number = 1; number <= boxes; number += 1) {
+      if (!spotIsBooked(slot, number)) {
+        return number;
+      }
+    }
+    return 1;
+  }
+
+  function selectedSpotValue() {
+    var slot = selectedSlot();
+    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
+    var spot = Math.max(1, Math.min(boxes, Number(selectedSpotNumber || 1)));
+    if (spotIsBooked(slot, spot)) {
+      spot = firstAvailableSpot(slot, boxes);
+    }
+    selectedSpotNumber = spot;
+    if (spotInput) {
+      spotInput.value = String(spot);
+    }
+    return spot;
+  }
+
+  function chooseSpot(spotNumber) {
+    var slot = selectedSlot();
+    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
+    var spot = Math.max(1, Math.min(boxes, Number(spotNumber || 1)));
+    if (spotIsBooked(slot, spot)) {
+      return;
+    }
+    selectedSpotNumber = spot;
+    if (spotInput) {
+      spotInput.value = String(spot);
+    }
+    updateAdPreview();
+  }
+
   function previewGridForCount(count) {
     var boxes = Number(count || 1);
     if (boxes <= 1) {
@@ -476,26 +527,54 @@
     adPreviewGrid.innerHTML = "";
     adPreviewGrid.dataset.spots = String(boxes);
     adPreviewGrid.style.gridTemplateColumns = "repeat(" + layout.columns + ", minmax(0, 1fr))";
+    var selectedSpot = selectedSpotValue();
+    var creativeWillShow = selectedAdType() === "text"
+      ? Boolean(textInput && textInput.value.trim())
+      : Boolean(previewImageUrl);
     for (var index = 0; index < boxes; index += 1) {
-      var cell = document.createElement("div");
+      var spotNumber = index + 1;
+      var cell = document.createElement("button");
+      cell.type = "button";
       cell.className = "ad-preview-cell";
-      if (index === 0) {
+      cell.dataset.spotNumber = String(spotNumber);
+      cell.setAttribute("aria-label", boxes > 1 ? "Choose spot " + spotNumber + " for your ad" : "Your ad spot");
+      cell.setAttribute("aria-pressed", spotNumber === selectedSpot ? "true" : "false");
+      if (spotIsBooked(slot, spotNumber)) {
+        cell.classList.add("is-booked");
+        cell.disabled = true;
+        cell.textContent = "Booked";
+      } else if (spotNumber === selectedSpot) {
+        cell.classList.add("is-selected");
         hasCreative = renderPreviewCreative(cell, boxes);
       } else {
-        cell.classList.add("is-other-ad");
-        cell.textContent = "Other ad";
+        cell.classList.add(creativeWillShow ? "is-other-ad" : "is-selectable-spot");
+        cell.textContent = creativeWillShow ? "Other ad" : "Choose spot " + spotNumber;
+        cell.addEventListener("click", function (event) {
+          chooseSpot(event.currentTarget.dataset.spotNumber);
+        });
+      }
+      if (!cell.disabled && spotNumber === selectedSpot) {
+        cell.addEventListener("click", function (event) {
+          chooseSpot(event.currentTarget.dataset.spotNumber);
+        });
       }
       adPreviewGrid.appendChild(cell);
     }
     if (adPreviewNote) {
       if (!slot) {
-        adPreviewNote.textContent = "Choose a placement to see the full ad layout.";
+        adPreviewNote.textContent = "Choose a placement, then choose the box where you want your ad to be.";
       } else if (hasCreative) {
-        adPreviewNote.textContent = "This preview shows your ad in the selected " + boxes + " spot layout.";
+        adPreviewNote.textContent = boxes > 1
+          ? "This preview shows your ad in spot " + selectedSpot + ". Click another box if you want your ad there."
+          : "This preview shows your ad in this layout.";
       } else if (selectedAdType() === "text") {
-        adPreviewNote.textContent = "Type your ad text to see it inside this layout.";
+        adPreviewNote.textContent = boxes > 1
+          ? "Choose the box where you want your ad to be, then type your ad text."
+          : "Type your ad text to see it inside this layout.";
       } else {
-        adPreviewNote.textContent = "Upload your picture to see it inside this layout.";
+        adPreviewNote.textContent = boxes > 1
+          ? "Choose the box where you want your ad to be, then upload your picture."
+          : "Upload your picture to see it inside this layout.";
       }
     }
     updatePreviewTextButton();
@@ -955,8 +1034,14 @@
   submitButton.disabled = true;
   dateInput.min = today();
   dateInput.value = today();
-  slotSelect.addEventListener("change", drawSlotSummary);
-  dateInput.addEventListener("change", loadSlots);
+  slotSelect.addEventListener("change", function () {
+    selectedSpotNumber = 1;
+    drawSlotSummary();
+  });
+  dateInput.addEventListener("change", function () {
+    selectedSpotNumber = 1;
+    loadSlots();
+  });
   form.querySelectorAll('input[name="creative_type"]').forEach(function (input) {
     input.addEventListener("change", adTypeChanged);
   });

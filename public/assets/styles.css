@@ -949,6 +949,7 @@ button.button:disabled {
 }
 
 .ad-preview-cell {
+  appearance: none;
   position: relative;
   display: flex;
   align-items: center;
@@ -962,8 +963,17 @@ button.button:disabled {
   background: #fff;
   border: 2px solid rgba(18, 47, 40, 0.85);
   border-radius: clamp(0.35rem, 1vw, 0.8rem);
+  cursor: pointer;
+  font-family: inherit;
   font-size: clamp(0.48rem, 1.2vw, 0.85rem);
   font-weight: 800;
+}
+
+.ad-preview-cell:hover:not(:disabled),
+.ad-preview-cell:focus-visible {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(231, 170, 47, 0.35);
+  outline: 0;
 }
 
 .ad-preview-cell::before {
@@ -985,6 +995,10 @@ button.button:disabled {
   border-radius: 0;
 }
 
+.ad-preview-cell.is-selected {
+  box-shadow: 0 0 0 3px rgba(231, 170, 47, 0.78);
+}
+
 .ad-preview-cell img {
   width: 100%;
   height: 100%;
@@ -1002,15 +1016,24 @@ button.button:disabled {
 }
 
 .ad-preview-cell.is-placeholder,
-.ad-preview-cell.is-other-ad {
+.ad-preview-cell.is-other-ad,
+.ad-preview-cell.is-selectable-spot,
+.ad-preview-cell.is-booked {
   color: rgba(18, 47, 40, 0.55);
   background: rgba(255, 255, 255, 0.68);
   border-style: dashed;
 }
 
 .ad-preview-cell.is-other-ad::before,
-.ad-preview-cell.is-placeholder::before {
+.ad-preview-cell.is-placeholder::before,
+.ad-preview-cell.is-selectable-spot::before,
+.ad-preview-cell.is-booked::before {
   content: "";
+}
+
+.ad-preview-cell.is-booked {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .preview-text-actions {
