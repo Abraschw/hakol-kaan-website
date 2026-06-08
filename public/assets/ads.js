@@ -22,8 +22,6 @@
   var adPreviewGrid = document.getElementById("ad-preview-grid");
   var adPreviewNote = document.getElementById("ad-preview-note");
   var spotInput = document.getElementById("ad-spot-number");
-  var previewTextButton = document.getElementById("send-preview-text-button");
-  var previewTextStatus = document.getElementById("preview-text-status");
   var loginForm = document.getElementById("ad-login-form");
   var signupForm = document.getElementById("ad-signup-form");
   var otpForm = document.getElementById("ad-otp-form");
@@ -282,45 +280,6 @@
         ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
         : "No payment method is set up yet. Set up payment before submitting your ad.";
     }
-    updatePreviewTextButton();
-    updatePreviewTextQuotaStatus();
-  }
-
-  function setPreviewTextStatus(message, type) {
-    if (!previewTextStatus) {
-      return;
-    }
-    previewTextStatus.textContent = message || "";
-    previewTextStatus.className = "form-status preview-text-status" + (type ? " is-" + type : "");
-    previewTextStatus.dataset.statusType = type || "";
-  }
-
-  function previewMessageCountText(count) {
-    var value = Math.max(0, Number(count || 0));
-    return value + " preview message" + (value === 1 ? "" : "s");
-  }
-
-  function previewQuotaStatusText() {
-    if (!isSignedIn()) {
-      return "Sign in to see how many preview messages you can still receive today.";
-    }
-    var quota = authProfile && authProfile.preview_texts ? authProfile.preview_texts : {};
-    var remaining = Number(quota.remaining);
-    if (!Number.isFinite(remaining)) {
-      return "Loading how many preview messages you can still receive today...";
-    }
-    return "You can receive " + previewMessageCountText(remaining) + " today.";
-  }
-
-  function updatePreviewTextQuotaStatus(force) {
-    if (!previewTextStatus) {
-      return;
-    }
-    var activeType = previewTextStatus.dataset.statusType || "";
-    if (!force && (activeType === "error" || activeType === "success" || activeType === "busy")) {
-      return;
-    }
-    setPreviewTextStatus(previewQuotaStatusText(), "");
   }
 
   function previewCreativeReady() {
@@ -328,20 +287,6 @@
       return Boolean(textInput && textInput.value.trim());
     }
     return Boolean(imageInput && imageInput.files && imageInput.files[0]);
-  }
-
-  function updatePreviewTextButton() {
-    if (!previewTextButton) {
-      return;
-    }
-    previewTextButton.disabled = (
-      !serverAvailable ||
-      !isSignedIn() ||
-      !accountDetailsReady() ||
-      !selectedSlot() ||
-      slotBlockedByDate(selectedSlot()) ||
-      !previewCreativeReady()
-    );
   }
 
   function updateAuthUi() {
@@ -418,7 +363,6 @@
       if (authEmailInput && authProfile.email) {
         authEmailInput.value = authProfile.email;
       }
-      updatePreviewTextQuotaStatus(true);
     }).catch(function (error) {
       if (/sign in/i.test(error.message)) {
         saveAuthSession(null);
@@ -612,7 +556,6 @@
           : "Upload your picture to see it inside this layout.";
       }
     }
-    updatePreviewTextButton();
   }
 
   function drawSlotSummary() {
@@ -992,64 +935,6 @@
         }
       });
   });
-
-  if (previewTextButton) {
-    previewTextButton.addEventListener("click", function () {
-      if (!serverAvailable) {
-        markServerUnavailable();
-        return;
-      }
-      if (!isSignedIn()) {
-        setPreviewTextStatus("Sign in before requesting a preview text.", "error");
-        openAccountModal("login");
-        return;
-      }
-      if (!accountDetailsReady()) {
-        setPreviewTextStatus(accountDetailsMissingMessage(), "error");
-        refreshAuthProfile();
-        return;
-      }
-      if (!selectedSlot()) {
-        setPreviewTextStatus("Choose an ad placement first.", "error");
-        return;
-      }
-      if (slotBlockedByDate(selectedSlot())) {
-        setPreviewTextStatus(dateRuleMessage(selectedSlot()), "error");
-        return;
-      }
-      if (!previewCreativeReady()) {
-        setPreviewTextStatus(selectedAdType() === "text" ? "Enter your ad text first." : "Upload your ad picture first.", "error");
-        return;
-      }
-      var data = new FormData(form);
-      data.append("session_token", authSession.session_token);
-      previewTextButton.disabled = true;
-      setPreviewTextStatus("Sending your preview message...", "busy");
-      requestJson("/ads/api/preview-text", { method: "POST", body: data })
-        .then(function (payload) {
-          var remaining = Number(payload.remaining);
-          if (Number.isFinite(remaining)) {
-            authProfile = authProfile || {};
-            authProfile.preview_texts = {
-              limit: Number((authProfile.preview_texts || {}).limit || 5),
-              remaining: Math.max(0, remaining),
-              used: Math.max(0, Number((authProfile.preview_texts || {}).limit || 5) - Math.max(0, remaining))
-            };
-          }
-          var remainingText = Number.isFinite(remaining) ? " " + previewQuotaStatusText() : "";
-          setPreviewTextStatus("Preview message sent to your phone." + remainingText, "success");
-          updatePreviewTextButton();
-        })
-        .catch(function (error) {
-          if (error.message === unavailableMessage) {
-            markServerUnavailable();
-          } else {
-            setPreviewTextStatus(error.message, "error");
-            updatePreviewTextButton();
-          }
-        });
-    });
-  }
 
   document.querySelectorAll(".layout-preview-link").forEach(function (link) {
     link.addEventListener("click", function (event) {
