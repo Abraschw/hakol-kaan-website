@@ -251,11 +251,11 @@
     label.className = "field";
     label.textContent = "Increase your bid to";
     var input = document.createElement("input");
-    var nextBid = Number(ad.bid_amount || 0) + 1;
+    var currentBid = Number(ad.bid_amount || 0);
     input.type = "number";
-    input.min = nextBid.toFixed(2);
+    input.min = currentBid.toFixed(2);
     input.step = "1";
-    input.value = nextBid.toFixed(2);
+    input.value = currentBid.toFixed(2);
     input.required = true;
     label.appendChild(input);
     var button = document.createElement("button");
@@ -266,6 +266,18 @@
     formEl.appendChild(button);
     formEl.addEventListener("submit", function (event) {
       event.preventDefault();
+      var chosenBid = Number(input.value || 0);
+      if (chosenBid <= currentBid) {
+        setDashboardMessage("Increase the bid amount first, then submit it.", "error");
+        input.focus();
+        return;
+      }
+      if (chosenBid < currentBid + 1) {
+        setDashboardMessage("Increase the bid by at least $1.00, then submit it.", "error");
+        input.focus();
+        return;
+      }
+      button.disabled = true;
       requestJson("/ads/api/increase-bid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,9 +287,14 @@
           amount: input.value
         })
       }).then(function () {
-        setDashboardMessage("Bid updated.", "success");
-        loadDashboard();
+        return loadDashboard().then(function () {
+          setDashboardMessage(
+            "Bid updated to " + money(chosenBid) + ". If nobody outbids you, your card will be charged " + money(chosenBid) + " 5 minutes before the ad goes live.",
+            "success"
+          );
+        });
       }).catch(function (error) {
+        button.disabled = false;
         setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
       });
     });
