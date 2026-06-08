@@ -251,9 +251,11 @@
     label.className = "field";
     label.textContent = "Increase your bid to";
     var input = document.createElement("input");
+    var nextBid = Number(ad.bid_amount || 0) + 1;
     input.type = "number";
-    input.min = String(Number(ad.bid_amount || 0) + 0.01);
-    input.step = "0.01";
+    input.min = nextBid.toFixed(2);
+    input.step = "1";
+    input.value = nextBid.toFixed(2);
     input.required = true;
     label.appendChild(input);
     var button = document.createElement("button");
