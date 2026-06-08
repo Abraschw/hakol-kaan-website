@@ -1213,6 +1213,14 @@ body.is-account-modal-open {
   cursor: pointer;
 }
 
+.dashboard-card-summary::marker {
+  content: "";
+}
+
+.dashboard-card-summary::-webkit-details-marker {
+  display: none;
+}
+
 .dashboard-card-summary:hover,
 .dashboard-card-summary:focus-visible {
   background: #f7fbf8;
@@ -1260,10 +1268,11 @@ body.is-account-modal-open {
 .dashboard-card-content {
   display: grid;
   gap: 0.65rem;
-  padding: 0 1rem 1rem;
+  padding: 1rem;
 }
 
 .dashboard-card[open] .dashboard-card-summary {
+  background: #f7fbf8;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1281,6 +1290,13 @@ body.is-account-modal-open {
 .dashboard-meta {
   color: var(--muted) !important;
   font-size: 0.9rem;
+}
+
+.dashboard-expanded-status {
+  padding: 0.7rem 0.85rem;
+  background: #f7fbf8;
+  border: 1px solid var(--line);
+  border-radius: 0.78rem;
 }
 
 .dashboard-details {
