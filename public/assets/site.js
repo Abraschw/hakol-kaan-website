@@ -162,7 +162,9 @@
     var lastMutationAt = 0;
     var startedAt = Date.now();
     var lastPointer = { x: 0, y: 0 };
-    var maxSnapshotLength = 650000;
+    var cachedReplayCss = "";
+    var maxEventsPerSession = 800;
+    var maxSnapshotLength = 420000;
 
     try {
       replaySessionId = sessionStorage.getItem(sessionKey) || "";
@@ -235,17 +237,19 @@
       }
       var inlineStyle = clone.ownerDocument.createElement("style");
       inlineStyle.setAttribute("data-replay-inline-css", "true");
-      var cssText = "";
-      Array.prototype.slice.call(document.styleSheets || []).forEach(function (sheet) {
-        try {
-          Array.prototype.slice.call(sheet.cssRules || []).forEach(function (rule) {
-            cssText += rule.cssText + "\n";
-          });
-        } catch (error) {
-        }
-      });
-      if (cssText) {
-        inlineStyle.textContent = cssText.slice(0, 240000);
+      if (!cachedReplayCss) {
+        Array.prototype.slice.call(document.styleSheets || []).forEach(function (sheet) {
+          try {
+            Array.prototype.slice.call(sheet.cssRules || []).forEach(function (rule) {
+              cachedReplayCss += rule.cssText + "\n";
+            });
+          } catch (error) {
+          }
+        });
+        cachedReplayCss = cachedReplayCss.slice(0, 180000);
+      }
+      if (cachedReplayCss) {
+        inlineStyle.textContent = cachedReplayCss;
         head.appendChild(inlineStyle);
       }
       clone.querySelectorAll("link[href],script[src],img[src],source[src],video[src],audio[src],iframe[src],a[href]").forEach(function (node) {
@@ -301,7 +305,8 @@
       });
     }
 
-    function sanitizeClone(clone) {
+    function sanitizeClone(clone, options) {
+      options = options || {};
       var head = clone.querySelector("head");
       if (head && !head.querySelector("base[data-replay-base]")) {
         var base = clone.ownerDocument.createElement("base");
@@ -310,8 +315,10 @@
         head.insertBefore(base, head.firstChild);
       }
       preserveStylesheets(clone);
-      preserveCanvasFrames(clone);
-      preserveImages(clone);
+      if (options.preserveMedia) {
+        preserveCanvasFrames(clone);
+        preserveImages(clone);
+      }
       clone.querySelectorAll("script,noscript").forEach(function (node) {
         node.remove();
       });
@@ -350,15 +357,15 @@
       return "<!doctype html>\n" + clone.outerHTML;
     }
 
-    function snapshotHtml(force) {
+    function snapshotHtml(force, options) {
       var now = Date.now();
-      if (!force && now - lastSnapshotAt < 450) {
+      if (!force && now - lastSnapshotAt < 2500) {
         return "";
       }
       lastSnapshotAt = now;
       try {
         var clone = document.documentElement.cloneNode(true);
-        var html = sanitizeClone(clone);
+        var html = sanitizeClone(clone, options || {});
         return html.length > maxSnapshotLength ? html.slice(0, maxSnapshotLength) + "\n<!-- replay snapshot truncated -->" : html;
       } catch (error) {
         return "";
@@ -373,6 +380,9 @@
     }
 
     function enqueue(eventType, detail, options) {
+      if (eventIndex >= maxEventsPerSession && eventType !== "page_close") {
+        return;
+      }
       options = options || {};
       detail = detail || {};
       var event = {
@@ -390,7 +400,7 @@
         viewport_width: window.innerWidth || 0,
         viewport_height: window.innerHeight || 0,
         detail: detail,
-        dom_html: snapshotHtml(Boolean(options.forceSnapshot))
+        dom_html: snapshotHtml(Boolean(options.forceSnapshot), options)
       };
       queue.push(event);
       scheduleFlush(false);
@@ -438,15 +448,15 @@
       flushTimer = window.setTimeout(function () {
         flushTimer = null;
         flush(false);
-      }, 1800);
+      }, 3500);
     }
 
-    enqueue("page_open", { title: document.title, target_text: window.location.pathname }, { forceSnapshot: true });
+    enqueue("page_open", { title: document.title, target_text: window.location.pathname }, { forceSnapshot: true, preserveMedia: true });
 
     document.addEventListener("mousemove", function (event) {
       lastPointer = { x: event.clientX, y: event.clientY };
       var now = Date.now();
-      if (now - lastMouseSampleAt < 250) {
+      if (now - lastMouseSampleAt < 400) {
         return;
       }
       lastMouseSampleAt = now;
@@ -466,7 +476,7 @@
         target_text: cleanText(target && (target.innerText || target.value || target.getAttribute("aria-label")), 1000),
         x: event.clientX,
         y: event.clientY
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: false });
     }, true);
 
     window.addEventListener("scroll", function () {
@@ -479,7 +489,7 @@
         target_text: "scroll",
         scroll_x: window.scrollX || window.pageXOffset || 0,
         scroll_y: window.scrollY || window.pageYOffset || 0
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: false });
     }, { passive: true });
 
     window.addEventListener("resize", function () {
@@ -487,13 +497,13 @@
         target_text: "resize",
         viewport_width: window.innerWidth || 0,
         viewport_height: window.innerHeight || 0
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: false });
     });
 
     if (window.MutationObserver) {
       var observer = new MutationObserver(function () {
         var now = Date.now();
-        if (now - lastMutationAt < 350) {
+        if (now - lastMutationAt < 5000) {
           return;
         }
         lastMutationAt = now;
@@ -511,8 +521,8 @@
       if (document.hidden) {
         return;
       }
-      enqueue("visual_tick", { target_text: "visual state sample" }, { forceSnapshot: true });
-    }, 1200);
+      enqueue("visual_tick", { target_text: "visual state sample" }, { forceSnapshot: false });
+    }, 2500);
 
     document.addEventListener("input", function (event) {
       var target = event.target;
@@ -520,7 +530,7 @@
         target_selector: cssSelector(target),
         target_text: cleanText(target && (target.name || target.id || target.placeholder), 1000),
         value: redactedValue(target)
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: false });
     }, true);
 
     document.addEventListener("change", function (event) {
@@ -529,14 +539,14 @@
         target_selector: cssSelector(target),
         target_text: cleanText(target && (target.name || target.id || target.innerText), 1000),
         value: redactedValue(target)
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: false });
     }, true);
 
     document.addEventListener("submit", function (event) {
       enqueue("submit", {
         target_selector: cssSelector(event.target),
         target_text: cleanText(event.target && (event.target.id || event.target.action), 1000)
-      }, { forceSnapshot: true });
+      }, { forceSnapshot: true, preserveMedia: true });
     }, true);
 
     var originalFetch = window.fetch;
@@ -553,7 +563,7 @@
           enqueue("request_done", {
             target_text: method + " " + url,
             status: response.status
-          }, { forceSnapshot: true });
+          }, { forceSnapshot: true, preserveMedia: true });
           return response;
         }).catch(function (error) {
           enqueue("request_error", {
@@ -566,7 +576,7 @@
     }
 
     window.addEventListener("pagehide", function () {
-      enqueue("page_close", { target_text: window.location.pathname }, { forceSnapshot: true });
+      enqueue("page_close", { target_text: window.location.pathname }, { forceSnapshot: true, preserveMedia: true });
       scheduleFlush(true);
     });
   }
