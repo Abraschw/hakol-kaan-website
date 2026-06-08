@@ -208,6 +208,13 @@
     }
 
     function sanitizeClone(clone) {
+      var head = clone.querySelector("head");
+      if (head && !head.querySelector("base[data-replay-base]")) {
+        var base = clone.ownerDocument.createElement("base");
+        base.setAttribute("data-replay-base", "true");
+        base.setAttribute("href", window.location.origin + "/");
+        head.insertBefore(base, head.firstChild);
+      }
       clone.querySelectorAll("script,noscript").forEach(function (node) {
         node.remove();
       });
