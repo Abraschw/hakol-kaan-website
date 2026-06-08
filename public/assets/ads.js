@@ -19,6 +19,8 @@
   var savedCardStatus = document.getElementById("saved-card-status");
   var paymentSetupNote = document.getElementById("payment-setup-note");
   var retryServerButton = document.getElementById("retry-server-button");
+  var previewTextButton = document.getElementById("send-preview-text-button");
+  var previewTextStatus = document.getElementById("preview-text-status");
   var adPreviewGrid = document.getElementById("ad-preview-grid");
   var adPreviewNote = document.getElementById("ad-preview-note");
   var spotInput = document.getElementById("ad-spot-number");
@@ -272,6 +274,7 @@
     stripeButton.disabled = !serverAvailable || !isSignedIn();
     stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment";
     submitButton.disabled = !serverAvailable || !isSignedIn() || !canUseSavedCard;
+    updatePreviewTextButton();
     if (paymentSetupNote) {
       paymentSetupNote.classList.toggle("hidden", canUseSavedCard);
     }
@@ -287,6 +290,45 @@
       return Boolean(textInput && textInput.value.trim());
     }
     return Boolean(imageInput && imageInput.files && imageInput.files[0]);
+  }
+
+  function previewQuotaRemaining() {
+    var quota = authProfile && authProfile.preview_texts;
+    if (!quota || typeof quota.remaining === "undefined") {
+      return null;
+    }
+    return Number(quota.remaining);
+  }
+
+  function updatePreviewTextButton() {
+    if (!previewTextButton) {
+      return;
+    }
+    var slot = selectedSlot();
+    var remaining = previewQuotaRemaining();
+    var canSend = serverAvailable
+      && isSignedIn()
+      && Boolean(slot)
+      && !slotBlockedByDate(slot)
+      && previewCreativeReady()
+      && remaining !== 0;
+    previewTextButton.disabled = !canSend;
+  }
+
+  function updatePreviewQuotaStatus() {
+    var remaining = previewQuotaRemaining();
+    if (remaining === null || !previewTextStatus || previewTextStatus.textContent) {
+      return;
+    }
+    setPreviewTextMessage("You can receive " + remaining + " preview message" + (remaining === 1 ? "" : "s") + " today.", "");
+  }
+
+  function setPreviewTextMessage(message, type) {
+    if (!previewTextStatus) {
+      return;
+    }
+    previewTextStatus.textContent = message || "";
+    previewTextStatus.className = "form-status" + (type ? " is-" + type : "");
   }
 
   function updateAuthUi() {
@@ -357,6 +399,7 @@
       authProfile = payload.profile || {};
       applyAuthProfileToForm();
       updateActionButtons();
+      updatePreviewQuotaStatus();
       if (accountEmail) {
         accountEmail.textContent = authProfile.email || "your account";
       }
@@ -556,6 +599,7 @@
           : "Upload your picture to see it inside this layout.";
       }
     }
+    updatePreviewTextButton();
   }
 
   function drawSlotSummary() {
@@ -890,6 +934,64 @@
       }
     });
   });
+
+  if (previewTextButton) {
+    previewTextButton.addEventListener("click", function () {
+      if (!serverAvailable) {
+        markServerUnavailable();
+        return;
+      }
+      if (!isSignedIn()) {
+        setPreviewTextMessage("Sign in with your email before sending a preview.", "error");
+        openAccountModal("login");
+        return;
+      }
+      if (!accountDetailsReady()) {
+        setPreviewTextMessage(accountDetailsMissingMessage(), "error");
+        refreshAuthProfile();
+        return;
+      }
+      if (!selectedSlot()) {
+        setPreviewTextMessage("Choose an ad time before sending a preview.", "error");
+        return;
+      }
+      if (slotBlockedByDate(selectedSlot())) {
+        setPreviewTextMessage(dateRuleMessage(selectedSlot()), "error");
+        return;
+      }
+      if (!previewCreativeReady()) {
+        setPreviewTextMessage("Add your ad picture or text before sending a preview.", "error");
+        return;
+      }
+      var data = new FormData(form);
+      data.append("session_token", authSession.session_token);
+      previewTextButton.disabled = true;
+      setPreviewTextMessage("Sending preview message...", "");
+      requestJson("/ads/api/preview-text", { method: "POST", body: data })
+        .then(function (payload) {
+          if (!authProfile) {
+            authProfile = {};
+          }
+          if (typeof payload.remaining !== "undefined") {
+            authProfile.preview_texts = authProfile.preview_texts || {};
+            authProfile.preview_texts.remaining = Number(payload.remaining);
+          }
+          setPreviewTextMessage(
+            "Preview message sent to your phone. You can receive " + Number(payload.remaining || 0) + " more preview message" + (Number(payload.remaining || 0) === 1 ? "" : "s") + " today.",
+            "success"
+          );
+          updatePreviewTextButton();
+        })
+        .catch(function (error) {
+          if (error.message === unavailableMessage) {
+            markServerUnavailable();
+          } else {
+            setPreviewTextMessage(error.message, "error");
+            updatePreviewTextButton();
+          }
+        });
+    });
+  }
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
