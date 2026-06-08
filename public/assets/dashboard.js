@@ -318,22 +318,15 @@
       var cardContent = document.createElement("div");
       cardContent.className = "dashboard-card-content";
 
-      var title = document.createElement("h3");
-      title.textContent = (ad.business_name || "Ad request") + " - " + (ad.ad_id || "");
-      cardContent.appendChild(title);
-
-      var meta = document.createElement("p");
-      meta.className = "dashboard-meta";
-      meta.textContent = (ad.kind === "bid" ? "Bidding ad" : "Fixed-price ad") + " | " + (ad.created_at || "created time unavailable");
-      cardContent.appendChild(meta);
-
       var status = document.createElement("p");
+      status.className = "dashboard-expanded-status";
       status.textContent = statusText(ad);
       cardContent.appendChild(status);
 
       var details = document.createElement("div");
       details.className = "dashboard-details";
       addDetail(details, "Request ID", ad.ad_id || "");
+      addDetail(details, "Created", ad.created_at || "");
       addDetail(details, "Date", displayDate(ad.slot_date));
       addDetail(details, "Send time", displayHour(ad.hour));
       addDetail(details, "Placement", ad.slot || "");
