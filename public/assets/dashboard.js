@@ -217,7 +217,7 @@
     return (hour % 12 || 12) + " " + suffix + " ET";
   }
 
-  function statusText(ad) {
+  function statusLabel(status) {
     var statusNames = {
       pending_approval: "Pending",
       active_bid: "Actively bidding",
@@ -235,7 +235,11 @@
       canceled: "Canceled",
       cancel_pending: "Cancel pending"
     };
-    var message = (statusNames[ad.status] || ad.status || "Status unavailable") + ". Placement: " + (ad.slot || "not set") + ".";
+    return statusNames[status] || status || "Status unavailable";
+  }
+
+  function statusText(ad) {
+    var message = statusLabel(ad.status) + ". Placement: " + (ad.slot || "not set") + ".";
     if (ad.kind === "bid") {
       message += " Your bid: " + money(ad.bid_amount) + ". Current highest bid: " + money(ad.highest_bid) + ".";
       if (ad.rank) {
@@ -261,6 +265,40 @@
     }
   }
 
+  function addSummaryPart(container, text) {
+    if (!text) {
+      return;
+    }
+    var item = document.createElement("span");
+    item.textContent = text;
+    container.appendChild(item);
+  }
+
+  function createAdSummary(ad) {
+    var summary = document.createElement("summary");
+    summary.className = "dashboard-card-summary";
+
+    var titleWrap = document.createElement("span");
+    titleWrap.className = "dashboard-card-summary-title";
+    var name = document.createElement("strong");
+    name.textContent = (ad.business_name || "Ad request") + (ad.ad_id ? " - " + ad.ad_id : "");
+    var status = document.createElement("span");
+    status.textContent = statusLabel(ad.status);
+    titleWrap.appendChild(name);
+    titleWrap.appendChild(status);
+    summary.appendChild(titleWrap);
+
+    var meta = document.createElement("span");
+    meta.className = "dashboard-card-summary-meta";
+    addSummaryPart(meta, displayDate(ad.slot_date));
+    addSummaryPart(meta, displayHour(ad.hour));
+    addSummaryPart(meta, ad.slot || "");
+    addSummaryPart(meta, ad.kind === "bid" ? "Bid " + money(ad.bid_amount) : "Price " + money(ad.price));
+    summary.appendChild(meta);
+
+    return summary;
+  }
+
   function renderAds(ads) {
     dashboardList.innerHTML = "";
     if (!ads || !ads.length) {
@@ -273,21 +311,25 @@
         cancelFeePercent = ad.cancel_fee_percent;
         updateCancelFeeText();
       }
-      var card = document.createElement("article");
+      var card = document.createElement("details");
       card.className = "dashboard-card";
+      card.appendChild(createAdSummary(ad));
+
+      var cardContent = document.createElement("div");
+      cardContent.className = "dashboard-card-content";
 
       var title = document.createElement("h3");
       title.textContent = (ad.business_name || "Ad request") + " - " + (ad.ad_id || "");
-      card.appendChild(title);
+      cardContent.appendChild(title);
 
       var meta = document.createElement("p");
       meta.className = "dashboard-meta";
       meta.textContent = (ad.kind === "bid" ? "Bidding ad" : "Fixed-price ad") + " | " + (ad.created_at || "created time unavailable");
-      card.appendChild(meta);
+      cardContent.appendChild(meta);
 
       var status = document.createElement("p");
       status.textContent = statusText(ad);
-      card.appendChild(status);
+      cardContent.appendChild(status);
 
       var details = document.createElement("div");
       details.className = "dashboard-details";
@@ -307,22 +349,23 @@
       if (Number(ad.cancel_fee || 0) > 0) {
         addDetail(details, "Cancel fee", money(ad.cancel_fee) + " (" + (ad.cancel_fee_percent || cancelFeePercent) + ")");
       }
-      card.appendChild(details);
+      cardContent.appendChild(details);
 
       if (ad.preview_url) {
         var image = document.createElement("img");
         image.className = "dashboard-preview";
         image.src = ad.preview_url;
         image.alt = "Ad preview for " + (ad.business_name || ad.ad_id || "request");
-        card.appendChild(image);
+        cardContent.appendChild(image);
       }
 
       if (ad.can_increase_bid) {
-        card.appendChild(createIncreaseBidForm(ad));
+        cardContent.appendChild(createIncreaseBidForm(ad));
       }
       if (ad.can_cancel) {
-        card.appendChild(createCancelButton(ad));
+        cardContent.appendChild(createCancelButton(ad));
       }
+      card.appendChild(cardContent);
       dashboardList.appendChild(card);
     });
   }

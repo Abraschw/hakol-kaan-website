@@ -1195,12 +1195,76 @@ body.is-account-modal-open {
 }
 
 .dashboard-card {
-  display: grid;
-  gap: 0.65rem;
-  padding: 1rem;
+  padding: 0;
+  overflow: hidden;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 1rem;
+}
+
+.dashboard-card-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(260px, 2fr);
+  gap: 0.9rem;
+  align-items: center;
+  min-height: 3.3rem;
+  padding: 0.8rem 1rem;
+  color: var(--green-2);
+  cursor: pointer;
+}
+
+.dashboard-card-summary:hover,
+.dashboard-card-summary:focus-visible {
+  background: #f7fbf8;
+  outline: 0;
+}
+
+.dashboard-card-summary-title {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.dashboard-card-summary-title strong,
+.dashboard-card-summary-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-card-summary-title span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dashboard-card-summary-meta {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.dashboard-card-summary-meta span {
+  padding: 0.18rem 0.5rem;
+  white-space: nowrap;
+  background: #eef7f2;
+  border-radius: 999px;
+}
+
+.dashboard-card-content {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0 1rem 1rem;
+}
+
+.dashboard-card[open] .dashboard-card-summary {
+  border-bottom: 1px solid var(--line);
 }
 
 .dashboard-card h3 {
@@ -1314,6 +1378,15 @@ body.is-account-modal-open {
   .two-fields,
   .auth-form {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-card-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card-summary-meta {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .bid-success-details,
