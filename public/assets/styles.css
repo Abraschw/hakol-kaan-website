@@ -1107,6 +1107,22 @@ body.is-account-modal-open {
   padding-right: 4rem;
 }
 
+.bid-success-panel {
+  width: min(540px, 100%);
+}
+
+.bid-success-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+
+.bid-success-note {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+}
+
 .auth-card {
   display: grid;
   gap: 1rem;
@@ -1300,6 +1316,7 @@ body.is-account-modal-open {
     grid-template-columns: 1fr;
   }
 
+  .bid-success-details,
   .dashboard-details {
     grid-template-columns: 1fr;
   }

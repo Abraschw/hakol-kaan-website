@@ -109,6 +109,89 @@
     container.appendChild(item);
   }
 
+  function closeBidSuccessPopup(popup) {
+    if (!popup) {
+      return;
+    }
+    popup.remove();
+    body.classList.remove("is-account-modal-open");
+  }
+
+  function showBidSuccessPopup(details) {
+    var previousBid = Number(details.previousBid || 0);
+    var newBid = Number(details.newBid || 0);
+    var increaseAmount = newBid - previousBid;
+    var popup = document.createElement("div");
+    popup.className = "account-modal bid-success-modal";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-modal", "true");
+    popup.setAttribute("aria-labelledby", "bid-success-title");
+
+    var backdrop = document.createElement("button");
+    backdrop.className = "account-modal-backdrop";
+    backdrop.type = "button";
+    backdrop.setAttribute("aria-label", "Close bid update popup");
+    popup.appendChild(backdrop);
+
+    var panel = document.createElement("div");
+    panel.className = "account-modal-panel bid-success-panel";
+    popup.appendChild(panel);
+
+    var closeButton = document.createElement("button");
+    closeButton.className = "account-modal-close";
+    closeButton.type = "button";
+    closeButton.textContent = "Close";
+    panel.appendChild(closeButton);
+
+    var heading = document.createElement("div");
+    heading.className = "section-heading";
+    var kicker = document.createElement("p");
+    kicker.className = "kicker";
+    kicker.textContent = "Bid updated";
+    var title = document.createElement("h2");
+    title.id = "bid-success-title";
+    title.textContent = "Your bid was increased successfully.";
+    heading.appendChild(kicker);
+    heading.appendChild(title);
+    panel.appendChild(heading);
+
+    var summary = document.createElement("div");
+    summary.className = "bid-success-details";
+    addDetail(summary, "Previous bid", money(previousBid));
+    addDetail(summary, "New bid", money(newBid));
+    addDetail(summary, "Increased by", money(increaseAmount));
+    panel.appendChild(summary);
+
+    var note = document.createElement("p");
+    note.className = "fine-print bid-success-note";
+    note.textContent = "Small note: if you win this bid, your card will be charged 5 minutes before the ad goes live.";
+    panel.appendChild(note);
+
+    var okButton = document.createElement("button");
+    okButton.className = "button";
+    okButton.type = "button";
+    okButton.textContent = "OK";
+    panel.appendChild(okButton);
+
+    function close() {
+      closeBidSuccessPopup(popup);
+    }
+
+    backdrop.addEventListener("click", close);
+    closeButton.addEventListener("click", close);
+    okButton.addEventListener("click", close);
+    document.addEventListener("keydown", function onKeyDown(event) {
+      if (event.key === "Escape" && document.body.contains(popup)) {
+        close();
+        document.removeEventListener("keydown", onKeyDown);
+      }
+    });
+
+    body.appendChild(popup);
+    body.classList.add("is-account-modal-open");
+    okButton.focus();
+  }
+
   function displayDate(value) {
     if (!value) {
       return "";
@@ -288,6 +371,10 @@
         })
       }).then(function () {
         return loadDashboard().then(function () {
+          showBidSuccessPopup({
+            previousBid: currentBid,
+            newBid: chosenBid
+          });
           setDashboardMessage(
             "Bid updated to " + money(chosenBid) + ". If nobody outbids you, your card will be charged " + money(chosenBid) + " 5 minutes before the ad goes live.",
             "success"
