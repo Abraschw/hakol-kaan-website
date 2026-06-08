@@ -935,8 +935,9 @@ button.button:disabled {
 }
 
 .ad-preview-stage {
-  padding: 0.62rem;
-  background: linear-gradient(145deg, #fbf7ea, #eef7f2);
+  padding: 2%;
+  overflow: hidden;
+  background: #f5f0e2;
   border: 1px solid var(--line);
   border-radius: 1rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
@@ -944,17 +945,10 @@ button.button:disabled {
 
 .ad-preview-grid {
   display: grid;
-  gap: clamp(0.25rem, 1.1vw, 0.48rem);
+  width: 100%;
+  gap: clamp(0.18rem, 1.215%, 0.9rem);
   align-items: stretch;
   margin-inline: auto;
-}
-
-.ad-preview-grid[data-spots="12"] {
-  max-width: 16.25rem;
-}
-
-.ad-preview-grid[data-spots="16"] {
-  max-width: 15rem;
 }
 
 .ad-preview-cell {
