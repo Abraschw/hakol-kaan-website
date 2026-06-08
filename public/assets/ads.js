@@ -624,6 +624,7 @@
     bidField.classList.remove("hidden");
     bidAmount.required = true;
     bidAmount.min = slot.min_bid;
+    bidAmount.step = "1";
     bidAmount.placeholder = "At least " + money(slot.min_bid);
     var current = slot.highest_bid ? " Current highest bid: " + money(slot.highest_bid) + "." : "";
     slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " No hold is placed for bids. Bidding closes five minutes before the scheduled send.";
