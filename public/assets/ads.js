@@ -283,6 +283,7 @@
         : "No payment method is set up yet. Set up payment before submitting your ad.";
     }
     updatePreviewTextButton();
+    updatePreviewTextQuotaStatus();
   }
 
   function setPreviewTextStatus(message, type) {
@@ -291,6 +292,35 @@
     }
     previewTextStatus.textContent = message || "";
     previewTextStatus.className = "form-status preview-text-status" + (type ? " is-" + type : "");
+    previewTextStatus.dataset.statusType = type || "";
+  }
+
+  function previewMessageCountText(count) {
+    var value = Math.max(0, Number(count || 0));
+    return value + " preview message" + (value === 1 ? "" : "s");
+  }
+
+  function previewQuotaStatusText() {
+    if (!isSignedIn()) {
+      return "Sign in to see how many preview messages you can still receive today.";
+    }
+    var quota = authProfile && authProfile.preview_texts ? authProfile.preview_texts : {};
+    var remaining = Number(quota.remaining);
+    if (!Number.isFinite(remaining)) {
+      return "Loading how many preview messages you can still receive today...";
+    }
+    return "You can receive " + previewMessageCountText(remaining) + " today.";
+  }
+
+  function updatePreviewTextQuotaStatus(force) {
+    if (!previewTextStatus) {
+      return;
+    }
+    var activeType = previewTextStatus.dataset.statusType || "";
+    if (!force && (activeType === "error" || activeType === "success" || activeType === "busy")) {
+      return;
+    }
+    setPreviewTextStatus(previewQuotaStatusText(), "");
   }
 
   function previewCreativeReady() {
@@ -388,6 +418,7 @@
       if (authEmailInput && authProfile.email) {
         authEmailInput.value = authProfile.email;
       }
+      updatePreviewTextQuotaStatus(true);
     }).catch(function (error) {
       if (/sign in/i.test(error.message)) {
         saveAuthSession(null);
@@ -993,14 +1024,20 @@
       var data = new FormData(form);
       data.append("session_token", authSession.session_token);
       previewTextButton.disabled = true;
-      setPreviewTextStatus("Sending your preview text...", "");
+      setPreviewTextStatus("Sending your preview message...", "busy");
       requestJson("/ads/api/preview-text", { method: "POST", body: data })
         .then(function (payload) {
           var remaining = Number(payload.remaining);
-          var remainingText = Number.isFinite(remaining)
-            ? " You have " + remaining + " preview text" + (remaining === 1 ? "" : "s") + " left today."
-            : "";
-          setPreviewTextStatus("Preview text sent to your phone." + remainingText, "success");
+          if (Number.isFinite(remaining)) {
+            authProfile = authProfile || {};
+            authProfile.preview_texts = {
+              limit: Number((authProfile.preview_texts || {}).limit || 5),
+              remaining: Math.max(0, remaining),
+              used: Math.max(0, Number((authProfile.preview_texts || {}).limit || 5) - Math.max(0, remaining))
+            };
+          }
+          var remainingText = Number.isFinite(remaining) ? " " + previewQuotaStatusText() : "";
+          setPreviewTextStatus("Preview message sent to your phone." + remainingText, "success");
           updatePreviewTextButton();
         })
         .catch(function (error) {
