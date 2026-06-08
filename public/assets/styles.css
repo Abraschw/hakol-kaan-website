@@ -985,19 +985,6 @@ button.button:disabled {
   outline: 0;
 }
 
-.ad-preview-cell::before {
-  content: "Sponsored ad";
-  position: absolute;
-  top: 0.32rem;
-  left: 50%;
-  color: rgba(18, 47, 40, 0.45);
-  font-size: clamp(0.28rem, 0.6vw, 0.48rem);
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
 .ad-preview-cell.has-image {
   padding: 0;
   border: 0;
