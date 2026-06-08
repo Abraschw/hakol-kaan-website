@@ -157,7 +157,12 @@
     var queue = [];
     var flushTimer = null;
     var lastSnapshotAt = 0;
-    var maxSnapshotLength = 420000;
+    var lastMouseSampleAt = 0;
+    var lastScrollSampleAt = 0;
+    var lastMutationAt = 0;
+    var startedAt = Date.now();
+    var lastPointer = { x: 0, y: 0 };
+    var maxSnapshotLength = 650000;
 
     try {
       replaySessionId = sessionStorage.getItem(sessionKey) || "";
@@ -171,6 +176,10 @@
 
     function nowIso() {
       return new Date().toISOString();
+    }
+
+    function elapsedMs() {
+      return Math.max(0, Date.now() - startedAt);
     }
 
     function cssSelector(element) {
@@ -207,6 +216,70 @@
       return type === "password" || type === "hidden" || sensitiveNames.test(name);
     }
 
+    function absoluteUrl(value) {
+      var text = String(value || "").trim();
+      if (!text || text.indexOf("data:") === 0 || text.indexOf("blob:") === 0 || text.indexOf("mailto:") === 0 || text.indexOf("tel:") === 0 || text.indexOf("#") === 0) {
+        return text;
+      }
+      try {
+        return new URL(text, window.location.href).href;
+      } catch (error) {
+        return text;
+      }
+    }
+
+    function preserveStylesheets(clone) {
+      var head = clone.querySelector("head");
+      if (!head) {
+        return;
+      }
+      var inlineStyle = clone.ownerDocument.createElement("style");
+      inlineStyle.setAttribute("data-replay-inline-css", "true");
+      var cssText = "";
+      Array.prototype.slice.call(document.styleSheets || []).forEach(function (sheet) {
+        try {
+          Array.prototype.slice.call(sheet.cssRules || []).forEach(function (rule) {
+            cssText += rule.cssText + "\n";
+          });
+        } catch (error) {
+        }
+      });
+      if (cssText) {
+        inlineStyle.textContent = cssText.slice(0, 240000);
+        head.appendChild(inlineStyle);
+      }
+      clone.querySelectorAll("link[href],script[src],img[src],source[src],video[src],audio[src],iframe[src],a[href]").forEach(function (node) {
+        if (node.hasAttribute("href")) {
+          node.setAttribute("href", absoluteUrl(node.getAttribute("href")));
+        }
+        if (node.hasAttribute("src")) {
+          node.setAttribute("src", absoluteUrl(node.getAttribute("src")));
+        }
+      });
+    }
+
+    function preserveCanvasFrames(clone) {
+      var sourceCanvases = Array.prototype.slice.call(document.querySelectorAll("canvas"));
+      var cloneCanvases = Array.prototype.slice.call(clone.querySelectorAll("canvas"));
+      sourceCanvases.forEach(function (canvas, index) {
+        var target = cloneCanvases[index];
+        if (!target) {
+          return;
+        }
+        try {
+          var image = clone.ownerDocument.createElement("img");
+          image.setAttribute("src", canvas.toDataURL("image/png"));
+          image.setAttribute("data-replay-canvas", "true");
+          image.setAttribute("width", canvas.width || canvas.clientWidth || "");
+          image.setAttribute("height", canvas.height || canvas.clientHeight || "");
+          image.setAttribute("style", target.getAttribute("style") || "");
+          target.parentNode.replaceChild(image, target);
+        } catch (error) {
+          target.setAttribute("data-replay-canvas-error", "Canvas could not be captured");
+        }
+      });
+    }
+
     function sanitizeClone(clone) {
       var head = clone.querySelector("head");
       if (head && !head.querySelector("base[data-replay-base]")) {
@@ -215,6 +288,8 @@
         base.setAttribute("href", window.location.origin + "/");
         head.insertBefore(base, head.firstChild);
       }
+      preserveStylesheets(clone);
+      preserveCanvasFrames(clone);
       clone.querySelectorAll("script,noscript").forEach(function (node) {
         node.remove();
       });
@@ -255,7 +330,7 @@
 
     function snapshotHtml(force) {
       var now = Date.now();
-      if (!force && now - lastSnapshotAt < 1200) {
+      if (!force && now - lastSnapshotAt < 450) {
         return "";
       }
       lastSnapshotAt = now;
@@ -281,10 +356,17 @@
       var event = {
         event_index: ++eventIndex,
         created_at_utc: nowIso(),
+        elapsed_ms: elapsedMs(),
         event_type: eventType,
         page_url: window.location.href,
         target_text: cleanText(detail.target_text, 1000),
         target_selector: cleanText(detail.target_selector, 1000),
+        mouse_x: Number(detail.x != null ? detail.x : lastPointer.x) || 0,
+        mouse_y: Number(detail.y != null ? detail.y : lastPointer.y) || 0,
+        scroll_x: window.scrollX || window.pageXOffset || 0,
+        scroll_y: window.scrollY || window.pageYOffset || 0,
+        viewport_width: window.innerWidth || 0,
+        viewport_height: window.innerHeight || 0,
         detail: detail,
         dom_html: snapshotHtml(Boolean(options.forceSnapshot))
       };
@@ -303,6 +385,7 @@
         current_url: window.location.href,
         viewport_width: window.innerWidth || 0,
         viewport_height: window.innerHeight || 0,
+        duration_ms: elapsedMs(),
         ended: Boolean(ended),
         events: queue.splice(0, 80)
       };
@@ -338,8 +421,24 @@
 
     enqueue("page_open", { title: document.title, target_text: window.location.pathname }, { forceSnapshot: true });
 
+    document.addEventListener("mousemove", function (event) {
+      lastPointer = { x: event.clientX, y: event.clientY };
+      var now = Date.now();
+      if (now - lastMouseSampleAt < 250) {
+        return;
+      }
+      lastMouseSampleAt = now;
+      enqueue("mouse_move", {
+        target_selector: cssSelector(event.target),
+        target_text: cleanText(event.target && (event.target.innerText || event.target.getAttribute("aria-label")), 300),
+        x: event.clientX,
+        y: event.clientY
+      }, { forceSnapshot: false });
+    }, true);
+
     document.addEventListener("click", function (event) {
       var target = event.target;
+      lastPointer = { x: event.clientX, y: event.clientY };
       enqueue("click", {
         target_selector: cssSelector(target),
         target_text: cleanText(target && (target.innerText || target.value || target.getAttribute("aria-label")), 1000),
@@ -347,6 +446,51 @@
         y: event.clientY
       }, { forceSnapshot: true });
     }, true);
+
+    window.addEventListener("scroll", function () {
+      var now = Date.now();
+      if (now - lastScrollSampleAt < 150) {
+        return;
+      }
+      lastScrollSampleAt = now;
+      enqueue("scroll", {
+        target_text: "scroll",
+        scroll_x: window.scrollX || window.pageXOffset || 0,
+        scroll_y: window.scrollY || window.pageYOffset || 0
+      }, { forceSnapshot: true });
+    }, { passive: true });
+
+    window.addEventListener("resize", function () {
+      enqueue("resize", {
+        target_text: "resize",
+        viewport_width: window.innerWidth || 0,
+        viewport_height: window.innerHeight || 0
+      }, { forceSnapshot: true });
+    });
+
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(function () {
+        var now = Date.now();
+        if (now - lastMutationAt < 350) {
+          return;
+        }
+        lastMutationAt = now;
+        enqueue("dom_mutation", { target_text: "page changed" }, { forceSnapshot: true });
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+
+    window.setInterval(function () {
+      if (document.hidden) {
+        return;
+      }
+      enqueue("visual_tick", { target_text: "visual state sample" }, { forceSnapshot: true });
+    }, 1200);
 
     document.addEventListener("input", function (event) {
       var target = event.target;
