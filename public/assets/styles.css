@@ -660,10 +660,8 @@ body.is-site-drawer-open {
 .layout-card img {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  padding: 0.4rem;
+  height: auto;
   background: #f5f0e2;
-  object-fit: contain;
 }
 
 .layout-card figcaption {
