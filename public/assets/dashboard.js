@@ -14,6 +14,7 @@
   var refreshButton = document.getElementById("refresh-dashboard-button");
   var signOutButton = document.getElementById("dashboard-sign-out");
   var unavailableMessage = "Advertising dashboard is temporarily unavailable. Please try again later.";
+  var blockedByFilterMessage = "The dashboard could not connect. If you use Meshimer or another web filter, please allow sms.hakolkaan.com and then refresh this page.";
   var authSession = readSession();
   var accountEmail = "";
   var cancelFeePercent = "4%";
@@ -81,10 +82,10 @@
 
   function requestJson(url, options) {
     return fetch(apiBase + url, options).catch(function () {
-      throw new Error(unavailableMessage);
+      throw new Error(blockedByFilterMessage);
     }).then(function (response) {
       return response.json().catch(function () {
-        return { ok: false, error: "The server returned an unreadable response." };
+        return { ok: false, error: blockedByFilterMessage };
       }).then(function (payload) {
         if (!response.ok || !payload.ok) {
           throw new Error(payload.error || "That request could not be completed.");
