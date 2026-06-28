@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   "use strict";
 
   var body = document.body;
@@ -17,7 +17,6 @@
   var blockedByFilterMessage = "The dashboard could not connect. If you use Meshimer or another web filter, please allow sms.hakolkaan.com and then refresh this page.";
   var authSession = readSession();
   var accountEmail = "";
-  var cancelFeePercent = "4%";
 
   if (!apiBase || !dashboardList) {
     return;
@@ -31,9 +30,6 @@
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
       if (session && session.session_token) {
-        if (Object.keys(session).length !== 1) {
-          localStorage.setItem(authKey, JSON.stringify({ session_token: session.session_token }));
-        }
         return { session_token: session.session_token };
       }
     } catch (error) {
@@ -45,7 +41,7 @@
   function saveSession(session) {
     authSession = session && session.session_token ? { session_token: session.session_token } : null;
     if (authSession) {
-      localStorage.setItem(authKey, JSON.stringify({ session_token: authSession.session_token }));
+      localStorage.setItem(authKey, JSON.stringify(authSession));
     } else {
       localStorage.removeItem(authKey);
       accountEmail = "";
@@ -66,18 +62,12 @@
     var signedIn = isSignedIn();
     if (dashboardLead) {
       dashboardLead.textContent = signedIn
-        ? "Here you can see your ad requests, active bids, payment status, cancellation options, and advertiser details."
-        : "Sign in to see your ad requests, active bids, payment status, cancellation options, and advertiser details.";
+        ? "Here you can see your daily search ads, payment status, cancellation options, and advertiser details."
+        : "Sign in to see your daily search ads, payment status, cancellation options, and advertiser details.";
     }
     signinPanel.classList.toggle("hidden", signedIn);
     profileSection.classList.toggle("hidden", !signedIn);
     dashboardSection.classList.toggle("hidden", !signedIn);
-  }
-
-  function updateCancelFeeText() {
-    document.querySelectorAll("[data-cancel-fee]").forEach(function (item) {
-      item.textContent = cancelFeePercent;
-    });
   }
 
   function requestJson(url, options) {
@@ -110,89 +100,6 @@
     container.appendChild(item);
   }
 
-  function closeBidSuccessPopup(popup) {
-    if (!popup) {
-      return;
-    }
-    popup.remove();
-    body.classList.remove("is-account-modal-open");
-  }
-
-  function showBidSuccessPopup(details) {
-    var previousBid = Number(details.previousBid || 0);
-    var newBid = Number(details.newBid || 0);
-    var increaseAmount = newBid - previousBid;
-    var popup = document.createElement("div");
-    popup.className = "account-modal bid-success-modal";
-    popup.setAttribute("role", "dialog");
-    popup.setAttribute("aria-modal", "true");
-    popup.setAttribute("aria-labelledby", "bid-success-title");
-
-    var backdrop = document.createElement("button");
-    backdrop.className = "account-modal-backdrop";
-    backdrop.type = "button";
-    backdrop.setAttribute("aria-label", "Close bid update popup");
-    popup.appendChild(backdrop);
-
-    var panel = document.createElement("div");
-    panel.className = "account-modal-panel bid-success-panel";
-    popup.appendChild(panel);
-
-    var closeButton = document.createElement("button");
-    closeButton.className = "account-modal-close";
-    closeButton.type = "button";
-    closeButton.textContent = "Close";
-    panel.appendChild(closeButton);
-
-    var heading = document.createElement("div");
-    heading.className = "section-heading";
-    var kicker = document.createElement("p");
-    kicker.className = "kicker";
-    kicker.textContent = "Bid updated";
-    var title = document.createElement("h2");
-    title.id = "bid-success-title";
-    title.textContent = "Your bid was increased successfully.";
-    heading.appendChild(kicker);
-    heading.appendChild(title);
-    panel.appendChild(heading);
-
-    var summary = document.createElement("div");
-    summary.className = "bid-success-details";
-    addDetail(summary, "Previous bid", money(previousBid));
-    addDetail(summary, "New bid", money(newBid));
-    addDetail(summary, "Increased by", money(increaseAmount));
-    panel.appendChild(summary);
-
-    var note = document.createElement("p");
-    note.className = "fine-print bid-success-note";
-    note.textContent = "Small note: if you win this bid, your card will be charged 5 minutes before the ad goes live.";
-    panel.appendChild(note);
-
-    var okButton = document.createElement("button");
-    okButton.className = "button";
-    okButton.type = "button";
-    okButton.textContent = "OK";
-    panel.appendChild(okButton);
-
-    function close() {
-      closeBidSuccessPopup(popup);
-    }
-
-    backdrop.addEventListener("click", close);
-    closeButton.addEventListener("click", close);
-    okButton.addEventListener("click", close);
-    document.addEventListener("keydown", function onKeyDown(event) {
-      if (event.key === "Escape" && document.body.contains(popup)) {
-        close();
-        document.removeEventListener("keydown", onKeyDown);
-      }
-    });
-
-    body.appendChild(popup);
-    body.classList.add("is-account-modal-open");
-    okButton.focus();
-  }
-
   function displayDate(value) {
     if (!value) {
       return "";
@@ -209,43 +116,40 @@
     return String(value);
   }
 
-  function displayHour(value) {
-    var hour = Number(value);
-    if (!hour) {
-      return "";
+  function placementLabel(ad) {
+    var kind = ad.placement_kind || ad.kind || "";
+    if (kind === "search_footer_day") {
+      return "Search picture bottom line";
     }
-    var suffix = hour >= 12 ? "PM" : "AM";
-    return (hour % 12 || 12) + " " + suffix + " ET";
+    if (kind === "search_image_day") {
+      return "Search picture ad";
+    }
+    return ad.placement_label || "Search ad";
   }
 
   function statusLabel(status) {
     var statusNames = {
-      pending_approval: "Pending",
-      active_bid: "Actively bidding",
-      approved_paid: "Paid",
-      paid: "Paid and scheduled",
-      won: "Winning bid selected",
-      charged: "Winning bid charged and scheduled",
-      sent: "Ad sent",
-      rejected: "Not accepted",
-      lost: "Bid did not win",
+      pending_approval: "Pending approval",
+      approved: "Approved",
+      active: "Active",
+      paid: "Paid and active",
+      sent: "Active",
+      rejected: "Not approved",
       payment_failed: "Payment failed",
-      sold_out: "That fixed spot was already filled",
-      reservation_failed: "Reservation could not be completed",
-      hold_failed: "Payment setup failed",
-      canceled: "Canceled",
-      cancel_pending: "Cancel pending"
+      canceled: "Canceled"
     };
     return statusNames[status] || status || "Status unavailable";
   }
 
   function statusText(ad) {
-    var message = statusLabel(ad.status) + ". Placement: " + (ad.slot || "not set") + ".";
-    if (ad.kind === "bid") {
-      message += " Your bid: " + money(ad.bid_amount) + ". Current highest bid: " + money(ad.highest_bid) + ".";
-      if (ad.rank) {
-        message += " Current position: " + ad.rank + ".";
-      }
+    var message = statusLabel(ad.status) + ". ";
+    message += placementLabel(ad) + " for " + (displayDate(ad.slot_date) || "the selected day") + ".";
+    if (ad.status === "pending_approval") {
+      message += " Hakol Kaan will review it before charging your card.";
+    } else if (ad.status === "active" || ad.status === "paid" || ad.status === "sent") {
+      message += " It can appear with Amazon and Walmart search-result pictures that day.";
+    } else if (ad.status === "payment_failed") {
+      message += " Please update your payment method and submit again.";
     }
     return message;
   }
@@ -259,11 +163,7 @@
     addDetail(profileDetails, "Business", profile.business_name || "");
     addDetail(profileDetails, "Phone", profile.phone || "");
     var card = profile.saved_card || {};
-    if (card.has_card) {
-      addDetail(profileDetails, "Payment method", [card.brand, card.last4 ? "ending in " + card.last4 : ""].filter(Boolean).join(" "));
-    } else {
-      addDetail(profileDetails, "Payment method", "Not set up yet");
-    }
+    addDetail(profileDetails, "Payment method", card.has_card ? [card.brand, card.last4 ? "ending in " + card.last4 : ""].filter(Boolean).join(" ") : "Not set up yet");
   }
 
   function addSummaryPart(container, text) {
@@ -282,7 +182,7 @@
     var titleWrap = document.createElement("span");
     titleWrap.className = "dashboard-card-summary-title";
     var name = document.createElement("strong");
-    name.textContent = (ad.business_name || "Ad request") + (ad.ad_id ? " - " + ad.ad_id : "");
+    name.textContent = (ad.business_name || "Ad request") + (ad.id ? " - " + ad.id : "");
     var status = document.createElement("span");
     status.textContent = statusLabel(ad.status);
     titleWrap.appendChild(name);
@@ -292,11 +192,9 @@
     var meta = document.createElement("span");
     meta.className = "dashboard-card-summary-meta";
     addSummaryPart(meta, displayDate(ad.slot_date));
-    addSummaryPart(meta, displayHour(ad.hour));
-    addSummaryPart(meta, ad.slot || "");
-    addSummaryPart(meta, ad.kind === "bid" ? "Bid " + money(ad.bid_amount) : "Price " + money(ad.price));
+    addSummaryPart(meta, placementLabel(ad));
+    addSummaryPart(meta, money(ad.price));
     summary.appendChild(meta);
-
     return summary;
   }
 
@@ -308,10 +206,6 @@
     }
     setDashboardMessage("Showing " + ads.length + " ad request(s)" + (accountEmail ? " for " + accountEmail : "") + ".", "success");
     ads.forEach(function (ad) {
-      if (ad.cancel_fee_percent) {
-        cancelFeePercent = ad.cancel_fee_percent;
-        updateCancelFeeText();
-      }
       var card = document.createElement("details");
       card.className = "dashboard-card";
       card.appendChild(createAdSummary(ad));
@@ -326,37 +220,32 @@
 
       var details = document.createElement("div");
       details.className = "dashboard-details";
-      addDetail(details, "Request ID", ad.ad_id || "");
+      addDetail(details, "Request ID", ad.id || "");
       addDetail(details, "Created", ad.created_at || "");
       addDetail(details, "Date", displayDate(ad.slot_date));
-      addDetail(details, "Send time", displayHour(ad.hour));
-      addDetail(details, "Placement", ad.slot || "");
-      addDetail(details, "Spots in layout", ad.boxes ? String(ad.boxes) : "");
+      addDetail(details, "Placement", placementLabel(ad));
+      addDetail(details, "Price", money(ad.price));
+      addDetail(details, "Charged", Number(ad.charged_amount || 0) > 0 ? money(ad.charged_amount) : "Not charged yet");
       addDetail(details, "Contact name", ad.advertiser_name || "");
       addDetail(details, "Contact email", ad.email || "");
       addDetail(details, "Contact phone", ad.phone || "");
-      addDetail(details, "Ad type", ad.creative_type || "");
-      addDetail(details, "Fixed price", ad.kind === "fixed" ? money(ad.price) : "");
-      addDetail(details, "Your bid", ad.kind === "bid" ? money(ad.bid_amount) : "");
-      addDetail(details, "Highest bid", ad.kind === "bid" ? money(ad.highest_bid) : "");
-      addDetail(details, "Bid position", ad.kind === "bid" && ad.rank ? String(ad.rank) : "");
-      if (Number(ad.cancel_fee || 0) > 0) {
-        addDetail(details, "Cancel fee", money(ad.cancel_fee) + " (" + (ad.cancel_fee_percent || cancelFeePercent) + ")");
-      }
+      addDetail(details, "Creative", ad.creative_type || "");
       cardContent.appendChild(details);
 
+      if (ad.text) {
+        var text = document.createElement("p");
+        text.className = "fine-print";
+        text.textContent = "Ad text: " + ad.text;
+        cardContent.appendChild(text);
+      }
       if (ad.preview_url) {
         var image = document.createElement("img");
         image.className = "dashboard-preview";
         image.src = ad.preview_url;
-        image.alt = "Ad preview for " + (ad.business_name || ad.ad_id || "request");
+        image.alt = "Ad preview for " + (ad.business_name || ad.id || "request");
         cardContent.appendChild(image);
       }
-
-      if (ad.can_increase_bid) {
-        cardContent.appendChild(createIncreaseBidForm(ad));
-      }
-      if (ad.can_cancel) {
+      if (ad.status !== "canceled" && ad.status !== "rejected") {
         cardContent.appendChild(createCancelButton(ad));
       }
       card.appendChild(cardContent);
@@ -364,85 +253,15 @@
     });
   }
 
-  function createIncreaseBidForm(ad) {
-    var formEl = document.createElement("form");
-    formEl.className = "raise-form dashboard-raise-form";
-    var label = document.createElement("label");
-    label.className = "field";
-    label.textContent = "Increase your bid to";
-    var input = document.createElement("input");
-    var currentBid = Number(ad.bid_amount || 0);
-    input.type = "number";
-    input.min = currentBid.toFixed(2);
-    input.step = "1";
-    input.value = currentBid.toFixed(2);
-    input.required = true;
-    label.appendChild(input);
-    var button = document.createElement("button");
-    button.className = "button";
-    button.type = "submit";
-    button.textContent = "Increase bid";
-    formEl.appendChild(label);
-    formEl.appendChild(button);
-    formEl.addEventListener("submit", function (event) {
-      event.preventDefault();
-      var chosenBid = Number(input.value || 0);
-      if (chosenBid <= currentBid) {
-        setDashboardMessage("Increase the bid amount first, then submit it.", "error");
-        input.focus();
-        return;
-      }
-      if (chosenBid < currentBid + 1) {
-        setDashboardMessage("Increase the bid by at least $1.00, then submit it.", "error");
-        input.focus();
-        return;
-      }
-      button.disabled = true;
-      requestJson("/ads/api/increase-bid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_token: authSession.session_token,
-          ad_id: ad.ad_id,
-          amount: input.value
-        })
-      }).then(function () {
-        return loadDashboard().then(function () {
-          showBidSuccessPopup({
-            previousBid: currentBid,
-            newBid: chosenBid
-          });
-          setDashboardMessage(
-            "Bid updated to " + money(chosenBid) + ". If nobody outbids you, your card will be charged " + money(chosenBid) + " 5 minutes before the ad goes live.",
-            "success"
-          );
-        });
-      }).catch(function (error) {
-        button.disabled = false;
-        setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
-      });
-    });
-    return formEl;
-  }
-
   function createCancelButton(ad) {
     var wrap = document.createElement("div");
     wrap.className = "dashboard-actions";
-    if (Number(ad.cancel_fee || 0) > 0) {
-      var note = document.createElement("p");
-      note.className = "fine-print";
-      note.textContent = "Canceling this paid ad costs " + (ad.cancel_fee_percent || cancelFeePercent) + " of the ad price.";
-      wrap.appendChild(note);
-    }
     var button = document.createElement("button");
     button.className = "button secondary";
     button.type = "button";
     button.textContent = "Cancel ad";
     button.addEventListener("click", function () {
-      var feeNote = Number(ad.cancel_fee || 0) > 0
-        ? " Canceling this paid ad costs " + (ad.cancel_fee_percent || cancelFeePercent) + " of the ad price."
-        : "";
-      if (!window.confirm("Cancel ad " + ad.ad_id + "?" + feeNote)) {
+      if (!window.confirm("Cancel ad " + (ad.id || "") + "?")) {
         return;
       }
       button.disabled = true;
@@ -451,7 +270,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_token: authSession.session_token,
-          ad_id: ad.ad_id
+          ad_id: ad.id
         })
       }).then(function (payload) {
         setDashboardMessage(payload.message || "Ad canceled.", "success");
@@ -478,19 +297,25 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_token: authSession.session_token })
     }).then(function (payload) {
-      if (payload.profile && authSession) {
-        accountEmail = payload.profile.email || payload.email || accountEmail;
-      }
       renderProfile(payload.profile || {});
       renderAds(payload.ads || []);
     }).catch(function (error) {
       if (/sign in/i.test(error.message)) {
         saveSession(null);
         updateVisibility();
+        setDashboardMessage("Please sign in again from the ad page.", "error");
+        return;
       }
       setDashboardMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
     });
   }
+
+  document.querySelectorAll("[data-account-link]").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      window.location.href = "/ads/#ad-account";
+    });
+  });
 
   if (refreshButton) {
     refreshButton.addEventListener("click", loadDashboard);
@@ -499,6 +324,8 @@
     signOutButton.addEventListener("click", function () {
       saveSession(null);
       updateVisibility();
+      dashboardList.innerHTML = "";
+      setDashboardMessage("You are signed out.", "");
     });
   }
   window.addEventListener("storage", loadDashboard);

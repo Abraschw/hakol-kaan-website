@@ -606,11 +606,6 @@ body.is-site-drawer-open {
   text-transform: uppercase;
 }
 
-.pricing-panel.bid .pricing-tag {
-  color: #805300;
-  background: rgba(231, 170, 47, 0.2);
-}
-
 .rate-table {
   width: 100%;
   margin-top: 1.2rem;
@@ -637,14 +632,14 @@ body.is-site-drawer-open {
   font-weight: 800;
 }
 
-.layout-gallery {
+.placement-gallery {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   align-items: start;
 }
 
-.layout-card {
+.placement-card {
   overflow: hidden;
   margin: 0;
   background: #fff;
@@ -652,12 +647,7 @@ body.is-site-drawer-open {
   border-radius: 1.15rem;
 }
 
-.layout-preview-link {
-  display: block;
-  cursor: zoom-in;
-}
-
-.layout-card img {
+.placement-card img {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -667,74 +657,15 @@ body.is-site-drawer-open {
   object-fit: contain;
 }
 
-.layout-card figcaption {
+.placement-card figcaption {
   display: grid;
   padding: 0.72rem 0.8rem 0.82rem;
   line-height: 1.35;
 }
 
-.layout-card figcaption span {
+.placement-card figcaption span {
   color: var(--muted);
   font-size: 0.86rem;
-}
-
-.layout-lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: clamp(1rem, 4vw, 3rem);
-  overflow: auto;
-  background:
-    radial-gradient(circle at top left, rgba(231, 170, 47, 0.2), transparent 28rem),
-    radial-gradient(circle at 85% 8%, rgba(15, 92, 69, 0.18), transparent 24rem),
-    linear-gradient(135deg, rgba(251, 246, 234, 0.94), rgba(238, 247, 242, 0.94) 55%, rgba(248, 251, 248, 0.94));
-  backdrop-filter: blur(10px);
-}
-
-.layout-lightbox-backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: transparent;
-  cursor: zoom-out;
-}
-
-.layout-lightbox-frame {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  width: min(1180px, 100%);
-  gap: 0.75rem;
-  justify-items: end;
-}
-
-.layout-lightbox-frame img {
-  display: block;
-  justify-self: center;
-  max-width: 100%;
-  max-height: calc(100vh - 8rem);
-  width: auto;
-  height: auto;
-  background: #f5f0e2;
-  border-radius: 1.2rem;
-  box-shadow: var(--shadow);
-}
-
-.layout-lightbox-close {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.6rem 1rem;
-  color: var(--green);
-  background: rgba(255, 255, 255, 0.9);
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-body.is-lightbox-open {
-  overflow: hidden;
 }
 
 .ads-process .panel {
@@ -821,10 +752,6 @@ body.is-lightbox-open {
   background: #eef7f2;
   border-radius: 0.72rem;
   font-size: 0.91rem;
-}
-
-.bid-amount {
-  margin-top: 0.9rem;
 }
 
 .ad-type-toggle {
@@ -1013,7 +940,6 @@ button.button:disabled {
 
 .ad-preview-cell.is-placeholder,
 .ad-preview-cell.is-other-ad,
-.ad-preview-cell.is-selectable-spot,
 .ad-preview-cell.is-booked {
   color: rgba(18, 47, 40, 0.55);
   background: rgba(255, 255, 255, 0.68);
@@ -1022,7 +948,6 @@ button.button:disabled {
 
 .ad-preview-cell.is-other-ad::before,
 .ad-preview-cell.is-placeholder::before,
-.ad-preview-cell.is-selectable-spot::before,
 .ad-preview-cell.is-booked::before {
   content: "";
 }
@@ -1105,22 +1030,6 @@ body.is-account-modal-open {
 
 .account-modal .section-heading {
   padding-right: 4rem;
-}
-
-.bid-success-panel {
-  width: min(540px, 100%);
-}
-
-.bid-success-details {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin: 1rem 0;
-}
-
-.bid-success-note {
-  margin: 0 0 1rem;
-  font-size: 0.78rem;
 }
 
 .auth-card {
@@ -1381,7 +1290,7 @@ body.is-account-modal-open {
     grid-template-columns: 1fr;
   }
 
-  .layout-gallery {
+  .placement-gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1405,12 +1314,11 @@ body.is-account-modal-open {
     justify-content: flex-start;
   }
 
-  .bid-success-details,
   .dashboard-details {
     grid-template-columns: 1fr;
   }
 
-  .layout-gallery {
+  .placement-gallery {
     grid-template-columns: 1fr;
   }
 }

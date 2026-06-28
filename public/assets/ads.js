@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   "use strict";
 
   var body = document.body;
@@ -6,10 +6,8 @@
   var form = document.getElementById("ad-request-form");
   var statusBox = document.getElementById("form-status");
   var dateInput = document.getElementById("slot-date");
-  var slotSelect = document.getElementById("ad-slot");
+  var placementSelect = document.getElementById("ad-slot");
   var slotSummary = document.getElementById("slot-summary");
-  var bidField = document.getElementById("bid-field");
-  var bidAmount = document.getElementById("bid-amount");
   var imageField = document.getElementById("ad-image-field");
   var textField = document.getElementById("ad-text-field");
   var imageInput = imageField ? imageField.querySelector("input") : null;
@@ -19,11 +17,10 @@
   var savedCardStatus = document.getElementById("saved-card-status");
   var paymentSetupNote = document.getElementById("payment-setup-note");
   var retryServerButton = document.getElementById("retry-server-button");
-  var previewTextButton = document.getElementById("send-preview-text-button");
-  var previewTextStatus = document.getElementById("preview-text-status");
-  var adPreviewGrid = document.getElementById("ad-preview-grid");
-  var adPreviewNote = document.getElementById("ad-preview-note");
-  var spotInput = document.getElementById("ad-spot-number");
+  var previewButton = document.getElementById("send-preview-text-button");
+  var previewStatus = document.getElementById("preview-text-status");
+  var previewGrid = document.getElementById("ad-preview-grid");
+  var previewNote = document.getElementById("ad-preview-note");
   var loginForm = document.getElementById("ad-login-form");
   var signupForm = document.getElementById("ad-signup-form");
   var otpForm = document.getElementById("ad-otp-form");
@@ -46,22 +43,17 @@
   var signOutButton = document.getElementById("sign-out-button");
   var signedOutNote = document.getElementById("signed-out-note");
   var bookingContent = document.getElementById("booking-content");
-  var layoutLightbox = document.getElementById("layout-lightbox");
-  var layoutLightboxImage = document.getElementById("layout-lightbox-image");
-  var layoutLightboxClose = document.getElementById("layout-lightbox-close");
-  var layoutLightboxBackdrop = document.getElementById("layout-lightbox-backdrop");
-  var slots = [];
+
   var authKey = "hakol_kaan_ads_auth";
-  var serverAvailable = false;
   var unavailableMessage = "Advertising requests are temporarily unavailable. Please try again later.";
+  var serverAvailable = false;
+  var placements = [];
   var authSession = loadAuthSession();
   var authProfile = null;
   var pendingAuthEmail = "";
   var pendingAuthPurpose = "signup";
   var pendingResetEmail = "";
-  var cancelFeePercent = "4%";
   var previewImageUrl = "";
-  var selectedSpotNumber = 1;
 
   if (!form || !apiBase) {
     return;
@@ -77,114 +69,45 @@
     return local.toISOString().slice(0, 10);
   }
 
-  function selectedDateObject() {
-    var value = dateInput.value || "";
-    var parts = value.split("-").map(Number);
-    if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
-      return null;
+  function setMessage(target, message, type) {
+    if (!target) {
+      return;
     }
-    return new Date(parts[0], parts[1] - 1, parts[2]);
+    target.textContent = message || "";
+    target.className = "form-status" + (type ? " is-" + type : "");
   }
 
-  function selectedDateIsSaturday() {
-    var date = selectedDateObject();
-    return Boolean(date && date.getDay() === 6);
-  }
-
-  function selectedDateIsFriday() {
-    var date = selectedDateObject();
-    return Boolean(date && date.getDay() === 5);
-  }
-
-  function slotBlockedByDate(slot) {
-    if (!slot) {
-      return false;
-    }
-    return selectedDateIsSaturday() || (selectedDateIsFriday() && Number(slot.hour) > 12);
-  }
-
-  function dateRuleMessage(slot) {
-    if (selectedDateIsSaturday()) {
-      return "Ads are not available on Saturday. Please choose a different date.";
-    }
-    if (selectedDateIsFriday() && (!slot || Number(slot.hour) > 12)) {
-      return "Friday ads are available only through 12 PM.";
-    }
-    return "";
-  }
-
-  function setMessage(message, type) {
-    statusBox.textContent = message || "";
-    statusBox.className = "form-status" + (type ? " is-" + type : "");
+  function setFormMessage(message, type) {
+    setMessage(statusBox, message, type);
   }
 
   function setAuthMessage(message, type) {
-    authStatus.textContent = message || "";
-    authStatus.className = "form-status" + (type ? " is-" + type : "");
+    setMessage(authStatus, message, type);
   }
 
-  function updateCancelFeeText() {
-    document.querySelectorAll("[data-cancel-fee]").forEach(function (item) {
-      item.textContent = cancelFeePercent;
+  function setPreviewMessage(message, type) {
+    setMessage(previewStatus, message, type);
+  }
+
+  function requestJson(url, options) {
+    return fetch(apiBase + url, options).catch(function () {
+      throw new Error(unavailableMessage);
+    }).then(function (response) {
+      return response.json().catch(function () {
+        return { ok: false, error: "The server returned an unreadable response." };
+      }).then(function (payload) {
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "That request could not be completed.");
+        }
+        return payload;
+      });
     });
-  }
-
-  function openLayoutLightbox(link) {
-    if (!layoutLightbox || !layoutLightboxImage || !link) {
-      return;
-    }
-    var previewImage = link.querySelector("img");
-    layoutLightboxImage.src = link.href;
-    layoutLightboxImage.alt = previewImage ? previewImage.alt : "Ad layout preview";
-    layoutLightbox.classList.remove("hidden");
-    layoutLightbox.setAttribute("aria-hidden", "false");
-    body.classList.add("is-lightbox-open");
-    if (layoutLightboxClose) {
-      layoutLightboxClose.focus();
-    }
-  }
-
-  function closeLayoutLightbox() {
-    if (!layoutLightbox || !layoutLightboxImage) {
-      return;
-    }
-    layoutLightbox.classList.add("hidden");
-    layoutLightbox.setAttribute("aria-hidden", "true");
-    layoutLightboxImage.removeAttribute("src");
-    body.classList.remove("is-lightbox-open");
-  }
-
-  function openAccountModal(mode) {
-    if (!accountModal) {
-      return;
-    }
-    if (mode) {
-      setAuthMode(mode);
-    }
-    accountModal.classList.remove("hidden");
-    accountModal.setAttribute("aria-hidden", "false");
-    body.classList.add("is-account-modal-open");
-    if (!isSignedIn() && authEmailInput) {
-      authEmailInput.focus();
-    }
-  }
-
-  function closeAccountModal() {
-    if (!accountModal) {
-      return;
-    }
-    accountModal.classList.add("hidden");
-    accountModal.setAttribute("aria-hidden", "true");
-    body.classList.remove("is-account-modal-open");
   }
 
   function loadAuthSession() {
     try {
       var session = JSON.parse(localStorage.getItem(authKey) || "{}");
       if (session && session.session_token) {
-        if (Object.keys(session).length !== 1) {
-          localStorage.setItem(authKey, JSON.stringify({ session_token: session.session_token }));
-        }
         return { session_token: session.session_token };
       }
     } catch (error) {
@@ -196,7 +119,7 @@
   function saveAuthSession(session) {
     authSession = session && session.session_token ? { session_token: session.session_token } : null;
     if (authSession) {
-      localStorage.setItem(authKey, JSON.stringify({ session_token: authSession.session_token }));
+      localStorage.setItem(authKey, JSON.stringify(authSession));
     } else {
       localStorage.removeItem(authKey);
       authProfile = null;
@@ -210,17 +133,16 @@
   }
 
   function savedCard() {
-    var profile = authProfile || {};
-    var card = profile.saved_card || {};
-    return card && card.has_card ? card : null;
+    var card = (authProfile && authProfile.saved_card) || {};
+    return card.has_card ? card : null;
   }
 
   function savedCardLabel() {
     var card = savedCard();
+    var parts = [];
     if (!card) {
       return "";
     }
-    var parts = [];
     if (card.brand) {
       parts.push(card.brand);
     }
@@ -241,10 +163,29 @@
     showSignupButton.classList.toggle("is-active", mode === "signup");
   }
 
-  function applyAuthProfileToForm() {
-    if (!isSignedIn()) {
+  function openAccountModal(mode) {
+    if (!accountModal) {
       return;
     }
+    setAuthMode(mode || (isSignedIn() ? "account" : "login"));
+    accountModal.classList.remove("hidden");
+    accountModal.setAttribute("aria-hidden", "false");
+    body.classList.add("is-account-modal-open");
+    if (!isSignedIn() && authEmailInput) {
+      authEmailInput.focus();
+    }
+  }
+
+  function closeAccountModal() {
+    if (!accountModal) {
+      return;
+    }
+    accountModal.classList.add("hidden");
+    accountModal.setAttribute("aria-hidden", "true");
+    body.classList.remove("is-account-modal-open");
+  }
+
+  function applyAuthProfileToForm() {
     var profile = authProfile || {};
     if (profile.email) {
       form.elements.email.value = profile.email;
@@ -262,73 +203,51 @@
     return Boolean(form.elements.advertiser_name.value && form.elements.email.value && form.elements.phone.value);
   }
 
-  function accountDetailsMissingMessage() {
-    if (!authProfile) {
-      return "Your account details are still loading. Please try again in a moment.";
-    }
-    return "Your signed-in account is missing required contact information. Please contact Hakol Kaan to update it.";
+  function selectedPlacement() {
+    var value = placementSelect.value || "";
+    return placements.find(function (placement) {
+      return (placement.placement_kind || placement.kind || "") === value;
+    }) || null;
   }
 
-  function updateActionButtons() {
-    var canUseSavedCard = Boolean(savedCard());
-    stripeButton.disabled = !serverAvailable || !isSignedIn();
-    stripeButton.textContent = canUseSavedCard ? "Update payment method" : "Set up payment";
-    submitButton.disabled = !serverAvailable || !isSignedIn() || !canUseSavedCard;
-    updatePreviewTextButton();
-    if (paymentSetupNote) {
-      paymentSetupNote.classList.toggle("hidden", canUseSavedCard);
-    }
-    if (savedCardStatus) {
-      savedCardStatus.textContent = canUseSavedCard
-        ? "Payment method ready: " + savedCardLabel() + ". It will be used for this ad."
-        : "No payment method is set up yet. Set up payment before submitting your ad.";
-    }
+  function isFooterPlacement() {
+    var placement = selectedPlacement();
+    return Boolean(placement && (placement.placement_kind || placement.kind) === "search_footer_day");
   }
 
-  function previewCreativeReady() {
-    if (selectedAdType() === "text") {
+  function selectedCreativeType() {
+    if (isFooterPlacement()) {
+      return "text";
+    }
+    var selected = form.querySelector('input[name="creative_type"]:checked');
+    return selected ? selected.value : "picture";
+  }
+
+  function creativeReady() {
+    if (selectedCreativeType() === "text") {
       return Boolean(textInput && textInput.value.trim());
     }
     return Boolean(imageInput && imageInput.files && imageInput.files[0]);
   }
 
-  function previewQuotaRemaining() {
-    var quota = authProfile && authProfile.preview_texts;
-    if (!quota || typeof quota.remaining === "undefined") {
-      return null;
+  function updateButtons() {
+    var hasCard = Boolean(savedCard());
+    var placement = selectedPlacement();
+    var ready = serverAvailable && isSignedIn();
+    stripeButton.disabled = !ready;
+    stripeButton.textContent = hasCard ? "Update payment method" : "Set up payment";
+    submitButton.disabled = !ready || !hasCard || !placement || placement.available === false || !creativeReady();
+    if (previewButton) {
+      previewButton.disabled = !ready || !placement || placement.available === false || !creativeReady();
     }
-    return Number(quota.remaining);
-  }
-
-  function updatePreviewTextButton() {
-    if (!previewTextButton) {
-      return;
+    if (paymentSetupNote) {
+      paymentSetupNote.classList.toggle("hidden", hasCard);
     }
-    var slot = selectedSlot();
-    var remaining = previewQuotaRemaining();
-    var canSend = serverAvailable
-      && isSignedIn()
-      && Boolean(slot)
-      && !slotBlockedByDate(slot)
-      && previewCreativeReady()
-      && remaining !== 0;
-    previewTextButton.disabled = !canSend;
-  }
-
-  function updatePreviewQuotaStatus() {
-    var remaining = previewQuotaRemaining();
-    if (remaining === null || !previewTextStatus || previewTextStatus.textContent) {
-      return;
+    if (savedCardStatus) {
+      savedCardStatus.textContent = hasCard
+        ? "Payment method ready: " + savedCardLabel() + ". It will be charged only after approval."
+        : "No payment method is set up yet. Set up payment before submitting your ad.";
     }
-    setPreviewTextMessage("You can receive " + remaining + " preview message" + (remaining === 1 ? "" : "s") + " today.", "");
-  }
-
-  function setPreviewTextMessage(message, type) {
-    if (!previewTextStatus) {
-      return;
-    }
-    previewTextStatus.textContent = message || "";
-    previewTextStatus.className = "form-status" + (type ? " is-" + type : "");
   }
 
   function updateAuthUi() {
@@ -342,49 +261,30 @@
     signedOutNote.classList.toggle("hidden", signedIn);
     bookingContent.classList.toggle("hidden", !signedIn);
     if (heroAuthButton) {
-      heroAuthButton.textContent = "Place an ad";
-      heroAuthButton.href = "#book-ad";
+      heroAuthButton.textContent = signedIn ? "Place an ad" : "Sign in to place an ad";
+      heroAuthButton.href = signedIn ? "#book-ad" : "#ad-account";
     }
     if (signedIn) {
       accountEmail.textContent = (authProfile && authProfile.email) || "your account";
-      if (authProfile && authProfile.email) {
-        authEmailInput.value = authProfile.email;
-      }
       applyAuthProfileToForm();
-      setAuthMessage("You are signed in. You can place ads and view your dashboard.", "success");
       if (!authProfile) {
         refreshAuthProfile();
       }
     }
-    updateActionButtons();
+    updateButtons();
   }
 
   function markServerUnavailable() {
     serverAvailable = false;
-    updateActionButtons();
     retryServerButton.classList.remove("hidden");
-    setMessage(unavailableMessage, "error");
+    setFormMessage(unavailableMessage, "error");
+    updateButtons();
   }
 
   function markServerAvailable() {
     serverAvailable = true;
     retryServerButton.classList.add("hidden");
-    updateActionButtons();
-  }
-
-  function requestJson(url, options) {
-    return fetch(apiBase + url, options).catch(function () {
-      throw new Error(unavailableMessage);
-    }).then(function (response) {
-      return response.json().catch(function () {
-        return { ok: false, error: "The server returned an unreadable response." };
-      }).then(function (payload) {
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error || "That request could not be completed.");
-        }
-        return payload;
-      });
-    });
+    updateButtons();
   }
 
   function refreshAuthProfile() {
@@ -397,15 +297,11 @@
       body: JSON.stringify({ session_token: authSession.session_token })
     }).then(function (payload) {
       authProfile = payload.profile || {};
-      applyAuthProfileToForm();
-      updateActionButtons();
-      updatePreviewQuotaStatus();
       if (accountEmail) {
         accountEmail.textContent = authProfile.email || "your account";
       }
-      if (authEmailInput && authProfile.email) {
-        authEmailInput.value = authProfile.email;
-      }
+      applyAuthProfileToForm();
+      updateButtons();
     }).catch(function (error) {
       if (/sign in/i.test(error.message)) {
         saveAuthSession(null);
@@ -413,267 +309,132 @@
     });
   }
 
-  function selectedSlot() {
-    var value = Number(slotSelect.value || 0);
-    return slots.find(function (slot) { return Number(slot.hour) === value; }) || null;
+  function loadPlacements() {
+    placementSelect.innerHTML = '<option value="">Loading placements...</option>';
+    return requestJson("/ads/api/slots?date=" + encodeURIComponent(dateInput.value || today()), { method: "GET" })
+      .then(function (payload) {
+        placements = payload.slots || [];
+        placementSelect.innerHTML = '<option value="">Choose a placement</option>';
+        placements.forEach(function (placement) {
+          var option = document.createElement("option");
+          option.value = placement.placement_kind || placement.kind;
+          option.disabled = placement.available === false;
+          option.textContent = placement.label + " - " + money(placement.price || placement.price_amount) + " per day" + (placement.available === false ? " - booked" : "");
+          placementSelect.appendChild(option);
+        });
+        markServerAvailable();
+        updatePlacementUi();
+      })
+      .catch(markServerUnavailable);
   }
 
-  function claimedSpots(slot) {
-    return new Set((slot && Array.isArray(slot.claimed_spots) ? slot.claimed_spots : []).map(function (value) {
-      return Number(value || 0);
-    }).filter(function (value) {
-      return value > 0;
-    }));
-  }
-
-  function spotIsBooked(slot, spotNumber) {
-    return Boolean(slot && slot.kind === "fixed" && claimedSpots(slot).has(Number(spotNumber || 0)));
-  }
-
-  function firstAvailableSpot(slot, boxes) {
-    for (var number = 1; number <= boxes; number += 1) {
-      if (!spotIsBooked(slot, number)) {
-        return number;
+  function updatePlacementUi() {
+    var placement = selectedPlacement();
+    var isFooter = isFooterPlacement();
+    imageField.classList.toggle("hidden", isFooter || selectedCreativeType() === "text");
+    textField.classList.toggle("hidden", selectedCreativeType() !== "text");
+    imageInput.required = !isFooter && selectedCreativeType() === "picture";
+    textInput.required = selectedCreativeType() === "text";
+    form.querySelectorAll('input[name="creative_type"]').forEach(function (input) {
+      input.disabled = isFooter;
+      if (isFooter && input.value === "text") {
+        input.checked = true;
       }
+    });
+    if (!placement) {
+      slotSummary.textContent = "Select one of the two daily ad options.";
+    } else if (placement.available === false) {
+      slotSummary.textContent = "This placement is already booked for the selected date. Choose the other option or another date.";
+    } else {
+      slotSummary.textContent = (placement.description || "Daily search ad placement.") + " Price: " + money(placement.price || placement.price_amount) + " for the day.";
     }
-    return 1;
+    renderPreview();
+    updateButtons();
   }
 
-  function selectedSpotValue() {
-    var slot = selectedSlot();
-    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
-    var spot = Math.max(1, Math.min(boxes, Number(selectedSpotNumber || 1)));
-    if (spotIsBooked(slot, spot)) {
-      spot = firstAvailableSpot(slot, boxes);
-    }
-    selectedSpotNumber = spot;
-    if (spotInput) {
-      spotInput.value = String(spot);
-    }
-    return spot;
-  }
-
-  function chooseSpot(spotNumber) {
-    var slot = selectedSlot();
-    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
-    var spot = Math.max(1, Math.min(boxes, Number(spotNumber || 1)));
-    if (spotIsBooked(slot, spot)) {
+  function renderPreview() {
+    if (!previewGrid) {
       return;
     }
-    selectedSpotNumber = spot;
-    if (spotInput) {
-      spotInput.value = String(spot);
-    }
-    updateAdPreview();
-  }
-
-  function previewGridForCount(count) {
-    var boxes = Number(count || 1);
-    if (boxes <= 1) {
-      return { columns: 1, rows: 1 };
-    }
-    if (boxes === 2) {
-      return { columns: 2, rows: 1 };
-    }
-    if (boxes === 4) {
-      return { columns: 2, rows: 2 };
-    }
-    if (boxes === 6) {
-      return { columns: 3, rows: 2 };
-    }
-    if (boxes === 8) {
-      return { columns: 4, rows: 2 };
-    }
-    if (boxes === 12) {
-      return { columns: 4, rows: 3 };
-    }
-    return { columns: 4, rows: 4 };
-  }
-
-  function selectedAdType() {
-    var selected = form.querySelector('input[name="creative_type"]:checked');
-    return selected ? selected.value : "picture";
-  }
-
-  function textPreviewSize(text, boxes) {
-    var length = String(text || "").trim().length;
-    var base = boxes <= 1 ? 2.2 : boxes <= 4 ? 1.35 : boxes <= 8 ? 1.0 : 0.72;
-    if (length > 120) {
-      base *= 0.55;
-    } else if (length > 70) {
-      base *= 0.68;
-    } else if (length > 35) {
-      base *= 0.82;
-    }
-    return Math.max(0.48, base).toFixed(2) + "rem";
-  }
-
-  function renderPreviewCreative(cell, boxes) {
-    var type = selectedAdType();
-    if (type === "text") {
-      var text = textInput ? textInput.value.trim() : "";
-      if (!text) {
-        cell.classList.add("is-placeholder");
-        cell.textContent = "Type your ad text";
-        return false;
-      }
-      var textWrap = document.createElement("div");
-      textWrap.className = "ad-preview-text";
-      textWrap.textContent = text;
-      textWrap.dir = "auto";
-      textWrap.style.fontSize = textPreviewSize(text, boxes);
-      cell.appendChild(textWrap);
-      return true;
-    }
-    if (!previewImageUrl) {
+    var placement = selectedPlacement();
+    var type = selectedCreativeType();
+    previewGrid.innerHTML = "";
+    previewGrid.style.gridTemplateColumns = "1fr";
+    var cell = document.createElement("div");
+    cell.className = "ad-preview-cell";
+    if (!placement) {
+      cell.classList.add("is-placeholder");
+      cell.textContent = "Choose an ad placement";
+      previewNote.textContent = "Choose a placement to preview the ad.";
+    } else if (isFooterPlacement()) {
+      cell.classList.add("is-placeholder");
+      cell.innerHTML = "Search result picture<br><br><strong>" + escapeHtml(textInput.value.trim() || "Place your ad here for $5 a day") + "</strong><br>To place the ad go to Menu and then go to Hakol Kaan Ads";
+      previewNote.textContent = "This line will appear at the bottom of Amazon and Walmart search-result pictures.";
+    } else if (type === "text") {
+      cell.classList.add("is-placeholder");
+      cell.textContent = textInput.value.trim() || "Type your ad text";
+      previewNote.textContent = "This text will be turned into an extra ad picture in the same search-result MMS.";
+    } else if (previewImageUrl) {
+      var image = document.createElement("img");
+      image.src = previewImageUrl;
+      image.alt = "Your ad preview";
+      cell.classList.add("has-image");
+      cell.appendChild(image);
+      previewNote.textContent = "This picture will be added to the same MMS as Amazon and Walmart search-result pictures.";
+    } else {
       cell.classList.add("is-placeholder");
       cell.textContent = "Upload your ad picture";
+      previewNote.textContent = "Upload a picture to preview the $10/day search picture ad.";
+    }
+    previewGrid.appendChild(cell);
+  }
+
+  function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, function (character) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[character];
+    });
+  }
+
+  function buildAdFormData() {
+    var data = new FormData(form);
+    var placement = selectedPlacement();
+    data.set("placement_kind", placement ? (placement.placement_kind || placement.kind) : "");
+    data.append("session_token", authSession.session_token);
+    if (isFooterPlacement()) {
+      data.set("creative_type", "footer");
+    }
+    return data;
+  }
+
+  function requireReadyForAd(messageTarget) {
+    if (!serverAvailable) {
+      markServerUnavailable();
       return false;
     }
-    var image = document.createElement("img");
-    cell.classList.add("has-image");
-    image.src = previewImageUrl;
-    image.alt = "Your ad preview";
-    cell.appendChild(image);
+    if (!isSignedIn()) {
+      setMessage(messageTarget, "Sign in with your email first.", "error");
+      openAccountModal("login");
+      return false;
+    }
+    if (!selectedPlacement()) {
+      setMessage(messageTarget, "Choose an ad placement first.", "error");
+      return false;
+    }
+    if (selectedPlacement().available === false) {
+      setMessage(messageTarget, "That placement is already booked for this date.", "error");
+      return false;
+    }
+    if (!creativeReady()) {
+      setMessage(messageTarget, "Add your ad picture or text first.", "error");
+      return false;
+    }
     return true;
-  }
-
-  function updateAdPreview() {
-    if (!adPreviewGrid) {
-      return;
-    }
-    var slot = selectedSlot();
-    var boxes = Math.max(1, Number(slot && slot.boxes ? slot.boxes : 1));
-    var layout = previewGridForCount(boxes);
-    var hasCreative = false;
-    adPreviewGrid.innerHTML = "";
-    adPreviewGrid.dataset.spots = String(boxes);
-    adPreviewGrid.style.gridTemplateColumns = "repeat(" + layout.columns + ", minmax(0, 1fr))";
-    var selectedSpot = selectedSpotValue();
-    var creativeWillShow = selectedAdType() === "text"
-      ? Boolean(textInput && textInput.value.trim())
-      : Boolean(previewImageUrl);
-    for (var index = 0; index < boxes; index += 1) {
-      var spotNumber = index + 1;
-      var cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "ad-preview-cell";
-      cell.dataset.spotNumber = String(spotNumber);
-      cell.setAttribute("aria-label", boxes > 1 ? "Choose spot " + spotNumber + " for your ad" : "Your ad spot");
-      cell.setAttribute("aria-pressed", spotNumber === selectedSpot ? "true" : "false");
-      if (spotIsBooked(slot, spotNumber)) {
-        cell.classList.add("is-booked");
-        cell.disabled = true;
-        cell.textContent = "Booked";
-      } else if (spotNumber === selectedSpot) {
-        cell.classList.add("is-selected");
-        hasCreative = renderPreviewCreative(cell, boxes);
-      } else {
-        cell.classList.add(creativeWillShow ? "is-other-ad" : "is-selectable-spot");
-        cell.textContent = creativeWillShow ? "Other ad" : "Choose spot " + spotNumber;
-        cell.addEventListener("click", function (event) {
-          chooseSpot(event.currentTarget.dataset.spotNumber);
-        });
-      }
-      if (!cell.disabled && spotNumber === selectedSpot) {
-        cell.addEventListener("click", function (event) {
-          chooseSpot(event.currentTarget.dataset.spotNumber);
-        });
-      }
-      adPreviewGrid.appendChild(cell);
-    }
-    if (adPreviewNote) {
-      if (!slot) {
-        adPreviewNote.textContent = "Choose a placement, then choose the box where you want your ad to be.";
-      } else if (hasCreative) {
-        adPreviewNote.textContent = boxes > 1
-          ? "This preview shows your ad in spot " + selectedSpot + ". Click another box if you want your ad there."
-          : "This preview shows your ad in this layout.";
-      } else if (selectedAdType() === "text") {
-        adPreviewNote.textContent = boxes > 1
-          ? "Choose the box where you want your ad to be, then type your ad text."
-          : "Type your ad text to see it inside this layout.";
-      } else {
-        adPreviewNote.textContent = boxes > 1
-          ? "Choose the box where you want your ad to be, then upload your picture."
-          : "Upload your picture to see it inside this layout.";
-      }
-    }
-    updatePreviewTextButton();
-  }
-
-  function drawSlotSummary() {
-    var slot = selectedSlot();
-    bidField.classList.add("hidden");
-    bidAmount.required = false;
-    if (!slot) {
-      slotSummary.textContent = dateRuleMessage(null) || "Select a time to see availability and payment details.";
-      updateAdPreview();
-      return;
-    }
-    if (slotBlockedByDate(slot)) {
-      slotSummary.textContent = dateRuleMessage(slot);
-      updateAdPreview();
-      return;
-    }
-    if (slot.kind === "fixed") {
-      slotSummary.textContent = slot.remaining_spots + " spot(s) currently available. Fixed price: " + money(slot.price) + " per spot.";
-      updateAdPreview();
-      return;
-    }
-    bidField.classList.remove("hidden");
-    bidAmount.required = true;
-    bidAmount.min = slot.min_bid;
-    bidAmount.step = "1";
-    bidAmount.placeholder = "At least " + money(slot.min_bid);
-    var current = slot.highest_bid ? " Current highest bid: " + money(slot.highest_bid) + "." : "";
-    slotSummary.textContent = "Starting bid: " + money(slot.min_bid) + "." + current + " No hold is placed for bids. Bidding closes five minutes before the scheduled send.";
-    updateAdPreview();
-  }
-
-  function loadSlots() {
-    var requestedDate = dateInput.value;
-    slotSelect.innerHTML = '<option value="">Loading placements...</option>';
-    return requestJson("/ads/api/slots?date=" + encodeURIComponent(requestedDate), { method: "GET" })
-      .then(function (payload) {
-        markServerAvailable();
-        cancelFeePercent = payload.cancel_fee_percent || cancelFeePercent;
-        updateCancelFeeText();
-        slots = payload.slots || [];
-        slotSelect.innerHTML = '<option value="">Choose a placement</option>';
-        slots.forEach(function (slot) {
-          var option = document.createElement("option");
-          option.value = slot.hour;
-          var wrongDate = slot.slot_date !== requestedDate;
-          var unavailable = slot.kind === "fixed" && Number(slot.remaining_spots) < 1;
-          var blockedByDate = slotBlockedByDate(slot);
-          option.disabled = wrongDate || unavailable || blockedByDate;
-          if (blockedByDate) {
-            option.textContent = slot.label + " - unavailable on this date";
-          } else if (wrongDate) {
-            option.textContent = slot.label + " - closed for this date";
-          } else if (slot.kind === "fixed") {
-            option.textContent = slot.label + " - " + slot.boxes + " spot layout - " + money(slot.price) + " - " + slot.remaining_spots + " left";
-          } else {
-            option.textContent = slot.label + " - " + slot.boxes + " spot layout - bids from " + money(slot.min_bid);
-          }
-          slotSelect.appendChild(option);
-        });
-        drawSlotSummary();
-      })
-      .catch(function () {
-        slotSelect.innerHTML = '<option value="">Placements unavailable right now</option>';
-        markServerUnavailable();
-      });
-  }
-
-  function adTypeChanged() {
-    var isText = selectedAdType() === "text";
-    imageField.classList.toggle("hidden", isText);
-    textField.classList.toggle("hidden", !isText);
-    imageInput.required = !isText;
-    textInput.required = isText;
-    updateAdPreview();
   }
 
   function cardSetupReturn() {
@@ -681,35 +442,30 @@
     var stripeState = query.get("stripe");
     var sessionId = query.get("session_id");
     if (stripeState === "success" && sessionId) {
-      updateActionButtons();
-      setMessage("Confirming your payment setup...", "");
+      setFormMessage("Confirming your payment setup...", "");
       refreshAuthProfile().then(function () {
-        applyAuthProfileToForm();
         return requestJson("/ads/api/card-setup/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_token: authSession && authSession.session_token,
-          stripe_session_id: sessionId,
-          advertiser_name: form.elements.advertiser_name.value,
-          business_name: "",
-          phone: form.elements.phone.value,
-          website: form.elements.website.value
-        })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_token: authSession && authSession.session_token,
+            stripe_session_id: sessionId,
+            advertiser_name: form.elements.advertiser_name.value,
+            business_name: "",
+            phone: form.elements.phone.value,
+            website: form.elements.website.value
+          })
         });
       }).then(function (payload) {
-        if (payload.profile && authSession) {
-          authProfile = payload.profile;
-          applyAuthProfileToForm();
-        }
-        updateActionButtons();
-        setMessage("Your payment method is ready" + (savedCardLabel() ? " (" + savedCardLabel() + ")" : "") + ". Choose your placement and ad details, then submit your ad.", "success");
+        authProfile = payload.profile || authProfile;
+        applyAuthProfileToForm();
+        updateButtons();
+        setFormMessage("Your payment method is ready. Choose your ad and submit when ready.", "success");
       }).catch(function (error) {
-        updateActionButtons();
-        setMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+        setFormMessage(error.message, "error");
       });
     } else if (stripeState === "canceled") {
-      setMessage("Payment setup was canceled. No ad was submitted.", "error");
+      setFormMessage("Payment setup was canceled. No ad was submitted.", "error");
     }
     if (stripeState) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
@@ -720,14 +476,6 @@
     event.preventDefault();
     var email = (authEmailInput.value || "").trim();
     var password = loginForm.elements.password.value || "";
-    if (!email || email.indexOf("@") < 0) {
-      setAuthMessage("Enter a valid email address.", "error");
-      return;
-    }
-    if (!password) {
-      setAuthMessage("Enter your password.", "error");
-      return;
-    }
     setAuthMessage("Logging in...", "");
     requestJson("/ads/api/auth/login", {
       method: "POST",
@@ -738,7 +486,7 @@
         pendingAuthEmail = payload.email || email;
         pendingAuthPurpose = "signup";
         setAuthMode("verify");
-        setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here to verify your email.", "success");
+        setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here.", "success");
         authCodeInput.focus();
         return;
       }
@@ -746,9 +494,8 @@
       saveAuthSession({ session_token: payload.session_token });
       loginForm.elements.password.value = "";
       closeAccountModal();
-      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
-      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      setAuthMessage(error.message, "error");
     });
   });
 
@@ -775,10 +522,10 @@
       pendingAuthEmail = payload.email || signupForm.elements.email.value;
       pendingAuthPurpose = "signup";
       setAuthMode("verify");
-      setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here to finish signing up.", "success");
+      setAuthMessage((payload.message || "Verification code sent.") + " Enter the code here.", "success");
       authCodeInput.focus();
     }).catch(function (error) {
-      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      setAuthMessage(error.message, "error");
     });
   });
 
@@ -794,9 +541,8 @@
       authCodeInput.value = "";
       signupForm.reset();
       closeAccountModal();
-      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
-      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      setAuthMessage(error.message, "error");
     });
   });
 
@@ -811,10 +557,9 @@
     }).then(function (payload) {
       pendingResetEmail = payload.email || pendingResetEmail;
       setAuthMode("reset");
-      setAuthMessage((payload.message || "If that email has an account, a reset code was sent.") + " Enter the code and your new password here.", "success");
-      document.getElementById("reset-code").focus();
+      setAuthMessage((payload.message || "If that email has an account, a reset code was sent.") + " Enter the code and your new password.", "success");
     }).catch(function (error) {
-      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      setAuthMessage(error.message, "error");
     });
   });
 
@@ -836,65 +581,10 @@
       saveAuthSession({ session_token: payload.session_token });
       resetPasswordForm.reset();
       closeAccountModal();
-      document.getElementById("book-ad").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (error) {
-      setAuthMessage(error.message === unavailableMessage ? unavailableMessage : error.message, "error");
+      setAuthMessage(error.message, "error");
     });
   });
-
-  showLoginButton.addEventListener("click", function () {
-    setAuthMode("login");
-    setAuthMessage("", "");
-  });
-
-  showSignupButton.addEventListener("click", function () {
-    setAuthMode("signup");
-    setAuthMessage("", "");
-  });
-
-  forgotPasswordButton.addEventListener("click", function () {
-    forgotEmailInput.value = authEmailInput.value || "";
-    setAuthMode("forgot");
-    setAuthMessage("Enter your account email and we will send a reset code. Check your Inbox or Spam folder.", "");
-  });
-
-  backToLoginButton.addEventListener("click", function () {
-    setAuthMode("login");
-    setAuthMessage("", "");
-  });
-
-  if (accountModalClose) {
-    accountModalClose.addEventListener("click", closeAccountModal);
-  }
-
-  if (accountModalBackdrop) {
-    accountModalBackdrop.addEventListener("click", closeAccountModal);
-  }
-
-  window.addEventListener("hakolOpenAdsAccount", function () {
-    openAccountModal(isSignedIn() ? "account" : "login");
-  });
-
-  window.HakolAdsAuth = {
-    openAccount: function () {
-      openAccountModal(isSignedIn() ? "account" : "login");
-    }
-  };
-
-  signOutButton.addEventListener("click", function () {
-    saveAuthSession(null);
-    updateActionButtons();
-    setAuthMessage("You are signed out.", "");
-  });
-
-  function reloadAuthSessionFromStorage() {
-    var previousToken = authSession && authSession.session_token;
-    authSession = loadAuthSession();
-    if (!authSession || authSession.session_token !== previousToken) {
-      authProfile = null;
-    }
-    updateAuthUi();
-  }
 
   stripeButton.addEventListener("click", function () {
     if (!serverAvailable) {
@@ -902,17 +592,17 @@
       return;
     }
     if (!isSignedIn()) {
-      setMessage("Sign in with your email before setting up payment.", "error");
+      setFormMessage("Sign in before setting up payment.", "error");
       openAccountModal("login");
       return;
     }
     if (!accountDetailsReady()) {
-      setMessage(accountDetailsMissingMessage(), "error");
+      setFormMessage("Your signed-in account is missing a name, phone, or email.", "error");
       refreshAuthProfile();
       return;
     }
     stripeButton.disabled = true;
-    setMessage("Opening secure payment setup...", "");
+    setFormMessage("Opening secure payment setup...", "");
     requestJson("/ads/api/card-setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -927,174 +617,131 @@
     }).then(function (payload) {
       window.location.href = payload.checkout_url;
     }).catch(function (error) {
-      if (error.message === unavailableMessage) {
-        markServerUnavailable();
-      } else {
-        updateActionButtons();
-        setMessage(error.message, "error");
-      }
+      setFormMessage(error.message, "error");
+      updateButtons();
     });
   });
 
-  if (previewTextButton) {
-    previewTextButton.addEventListener("click", function () {
-      if (!serverAvailable) {
-        markServerUnavailable();
+  if (previewButton) {
+    previewButton.addEventListener("click", function () {
+      if (!requireReadyForAd(previewStatus)) {
         return;
       }
-      if (!isSignedIn()) {
-        setPreviewTextMessage("Sign in with your email before sending a preview.", "error");
-        openAccountModal("login");
-        return;
-      }
-      if (!accountDetailsReady()) {
-        setPreviewTextMessage(accountDetailsMissingMessage(), "error");
-        refreshAuthProfile();
-        return;
-      }
-      if (!selectedSlot()) {
-        setPreviewTextMessage("Choose an ad time before sending a preview.", "error");
-        return;
-      }
-      if (slotBlockedByDate(selectedSlot())) {
-        setPreviewTextMessage(dateRuleMessage(selectedSlot()), "error");
-        return;
-      }
-      if (!previewCreativeReady()) {
-        setPreviewTextMessage("Add your ad picture or text before sending a preview.", "error");
-        return;
-      }
-      var data = new FormData(form);
-      data.append("session_token", authSession.session_token);
-      previewTextButton.disabled = true;
-      setPreviewTextMessage("Sending preview message...", "");
-      requestJson("/ads/api/preview-text", { method: "POST", body: data })
-        .then(function (payload) {
-          if (!authProfile) {
-            authProfile = {};
-          }
-          if (typeof payload.remaining !== "undefined") {
-            authProfile.preview_texts = authProfile.preview_texts || {};
-            authProfile.preview_texts.remaining = Number(payload.remaining);
-          }
-          setPreviewTextMessage(
-            "Preview message sent to your phone. You can receive " + Number(payload.remaining || 0) + " more preview message" + (Number(payload.remaining || 0) === 1 ? "" : "s") + " today.",
-            "success"
-          );
-          updatePreviewTextButton();
+      previewButton.disabled = true;
+      setPreviewMessage("Sending preview message...", "");
+      requestJson("/ads/api/preview-text", { method: "POST", body: buildAdFormData() })
+        .then(function () {
+          setPreviewMessage("Preview message sent to your phone.", "success");
+          updateButtons();
         })
         .catch(function (error) {
-          if (error.message === unavailableMessage) {
-            markServerUnavailable();
-          } else {
-            setPreviewTextMessage(error.message, "error");
-            updatePreviewTextButton();
-          }
+          setPreviewMessage(error.message, "error");
+          updateButtons();
         });
     });
   }
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
-    if (!serverAvailable) {
-      markServerUnavailable();
-      return;
-    }
-    if (!isSignedIn()) {
-      setMessage("Sign in with your email before submitting an ad.", "error");
-      openAccountModal("login");
+    if (!requireReadyForAd(statusBox)) {
       return;
     }
     if (!savedCard()) {
-      setMessage("Set up payment before submitting the ad.", "error");
+      setFormMessage("Set up payment before submitting the ad.", "error");
       return;
     }
     if (!accountDetailsReady()) {
-      setMessage(accountDetailsMissingMessage(), "error");
+      setFormMessage("Your signed-in account is missing a name, phone, or email.", "error");
       refreshAuthProfile();
       return;
     }
-    if (slotBlockedByDate(selectedSlot())) {
-      setMessage(dateRuleMessage(selectedSlot()), "error");
-      return;
-    }
-    var data = new FormData(form);
-    data.append("session_token", authSession.session_token);
     submitButton.disabled = true;
-    setMessage("Submitting your ad...", "");
-    requestJson("/ads/api/submit", { method: "POST", body: data })
+    setFormMessage("Submitting your ad...", "");
+    requestJson("/ads/api/submit", { method: "POST", body: buildAdFormData() })
       .then(function (payload) {
-        setMessage("Your ad request was sent. Request ID: " + payload.ad_id + ". Opening your dashboard...", "success");
+        setFormMessage("Your ad request was sent. Request ID: " + (payload.ad_id || (payload.ad && payload.ad.id) || "") + ". Opening your dashboard...", "success");
         setTimeout(function () {
           window.location.href = "/dashboard/";
         }, 1200);
       })
       .catch(function (error) {
-        if (error.message === unavailableMessage) {
-          markServerUnavailable();
-        } else {
-          updateActionButtons();
-          setMessage(error.message, "error");
-        }
+        setFormMessage(error.message, "error");
+        updateButtons();
       });
   });
 
-  document.querySelectorAll(".layout-preview-link").forEach(function (link) {
+  showLoginButton.addEventListener("click", function () {
+    setAuthMode("login");
+    setAuthMessage("", "");
+  });
+  showSignupButton.addEventListener("click", function () {
+    setAuthMode("signup");
+    setAuthMessage("", "");
+  });
+  forgotPasswordButton.addEventListener("click", function () {
+    forgotEmailInput.value = authEmailInput.value || "";
+    setAuthMode("forgot");
+    setAuthMessage("Enter your account email and we will send a reset code.", "");
+  });
+  backToLoginButton.addEventListener("click", function () {
+    setAuthMode("login");
+    setAuthMessage("", "");
+  });
+  signOutButton.addEventListener("click", function () {
+    saveAuthSession(null);
+    setAuthMessage("You are signed out.", "");
+  });
+
+  if (accountModalClose) {
+    accountModalClose.addEventListener("click", closeAccountModal);
+  }
+  if (accountModalBackdrop) {
+    accountModalBackdrop.addEventListener("click", closeAccountModal);
+  }
+  document.querySelectorAll("[data-account-link]").forEach(function (link) {
     link.addEventListener("click", function (event) {
       event.preventDefault();
-      openLayoutLightbox(link);
+      openAccountModal(isSignedIn() ? "account" : "login");
     });
   });
-  if (layoutLightboxClose) {
-    layoutLightboxClose.addEventListener("click", closeLayoutLightbox);
-  }
-  if (layoutLightboxBackdrop) {
-    layoutLightboxBackdrop.addEventListener("click", closeLayoutLightbox);
-  }
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && layoutLightbox && !layoutLightbox.classList.contains("hidden")) {
-      closeLayoutLightbox();
+  window.HakolAdsAuth = {
+    openAccount: function () {
+      openAccountModal(isSignedIn() ? "account" : "login");
     }
-    if (event.key === "Escape" && accountModal && !accountModal.classList.contains("hidden")) {
-      closeAccountModal();
-    }
-  });
-  stripeButton.disabled = true;
-  submitButton.disabled = true;
-  dateInput.min = today();
-  dateInput.value = today();
-  slotSelect.addEventListener("change", function () {
-    selectedSpotNumber = 1;
-    drawSlotSummary();
-  });
-  dateInput.addEventListener("change", function () {
-    selectedSpotNumber = 1;
-    loadSlots();
-  });
+  };
+
+  placementSelect.addEventListener("change", updatePlacementUi);
+  dateInput.addEventListener("change", loadPlacements);
   form.querySelectorAll('input[name="creative_type"]').forEach(function (input) {
-    input.addEventListener("change", adTypeChanged);
+    input.addEventListener("change", updatePlacementUi);
   });
-  adTypeChanged();
-  retryServerButton.addEventListener("click", loadSlots);
   if (imageInput) {
     imageInput.addEventListener("change", function () {
       if (previewImageUrl) {
         URL.revokeObjectURL(previewImageUrl);
         previewImageUrl = "";
       }
-      var file = imageInput.files && imageInput.files[0];
-      if (file) {
-        previewImageUrl = URL.createObjectURL(file);
+      if (imageInput.files && imageInput.files[0]) {
+        previewImageUrl = URL.createObjectURL(imageInput.files[0]);
       }
-      updateAdPreview();
+      updatePlacementUi();
     });
   }
   if (textInput) {
-    textInput.addEventListener("input", updateAdPreview);
+    textInput.addEventListener("input", updatePlacementUi);
   }
-  window.addEventListener("storage", reloadAuthSessionFromStorage);
-  window.addEventListener("hakolAdsAuthChanged", reloadAuthSessionFromStorage);
-  loadSlots().then(function () {
+  retryServerButton.addEventListener("click", loadPlacements);
+  window.addEventListener("storage", function () {
+    authSession = loadAuthSession();
+    authProfile = null;
+    updateAuthUi();
+  });
+
+  stripeButton.disabled = true;
+  submitButton.disabled = true;
+  dateInput.min = today();
+  dateInput.value = today();
+  loadPlacements().then(function () {
     cardSetupReturn();
     updateAuthUi();
     if (window.location.hash === "#ad-account") {
