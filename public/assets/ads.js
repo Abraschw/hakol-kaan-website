@@ -368,7 +368,7 @@
       previewNote.textContent = "Choose a placement to preview the ad.";
     } else if (isFooterPlacement()) {
       cell.classList.add("is-placeholder");
-      cell.innerHTML = "Search result picture<br><br><strong>" + escapeHtml(textInput.value.trim() || "Place your ad here for $5 a day") + "</strong><br>To place the ad go to Menu and then go to Hakol Kaan Ads";
+      cell.innerHTML = "Search result picture<br><br><strong>" + escapeHtml(textInput.value.trim() || "Place your ad here for $5 a day") + "</strong>";
       previewNote.textContent = "This line will appear at the bottom of Amazon and Walmart search-result pictures.";
     } else if (type === "text") {
       cell.classList.add("is-placeholder");
